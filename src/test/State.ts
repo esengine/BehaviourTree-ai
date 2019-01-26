@@ -6,7 +6,7 @@ class State{
     public fatigue: number = 0;
     public thirst: number = 0;
     public gold: number = 0;
-    public goldInBank: number;
+    public goldInBank: number = 0;
     public currentLocation: Locate = Locate.Home;
 }
 

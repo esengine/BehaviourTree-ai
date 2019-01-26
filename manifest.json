@@ -27,7 +27,7 @@
 		"bin-debug/behaviourTree/composites/ParallelSelector.js",
 		"bin-debug/behaviourTree/composites/RandomSelector.js",
 		"bin-debug/behaviourTree/composites/RandomSequence.js",
-		"bin-debug/test/State.js",
+		"bin-debug/LoadingUI.js",
 		"bin-debug/ThemeAdapter.js",
 		"bin-debug/behaviourTree/conditionals/ExecuteActionConditional.js",
 		"bin-debug/behaviourTree/conditionals/IConditional.js",
@@ -46,6 +46,6 @@
 		"bin-debug/core/Timer.js",
 		"bin-debug/core/TimerItem.js",
 		"bin-debug/test/AiComponent.js",
-		"bin-debug/LoadingUI.js"
+		"bin-debug/test/State.js"
 	]
 }

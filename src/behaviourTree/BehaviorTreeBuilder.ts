@@ -1,3 +1,9 @@
+/**
+ * 使用流畅的API构建BehaviorTree的帮助器。 
+ * 叶节点需要首先添加父节点。 父节点可以是Composites或Decorate。 
+ * 添加叶节点时，装饰器会自动关闭。 
+ * Composites必须调用endComposite来关闭它们。
+ */
 class BehaviorTreeBuilder<T>{
     private _context: T;
     private _currentNode: Behavior<T>;
@@ -28,12 +34,12 @@ class BehaviorTreeBuilder<T>{
         if (this._parentNodeStack.length > 0)
             this.setChildOnParent(composite);
 
-        this._parentNodeStack.push(composite);
+        ArrayExt.push(this._parentNodeStack, composite);
         return this;
     }
 
     private endDecorator(): BehaviorTreeBuilder<T>{
-        this._currentNode = this._parentNodeStack.pop();
+        this._currentNode = ArrayExt.pop(this._parentNodeStack);
         return this;
     }
 
@@ -129,7 +135,7 @@ class BehaviorTreeBuilder<T>{
 
     public endComposite(): BehaviorTreeBuilder<T>{
         Assert.isTrue( ArrayExt.peek(this._parentNodeStack) instanceof Composite, "尝试结束复合器，但顶部节点是装饰器" );
-        this._currentNode = this._parentNodeStack.pop();
+        this._currentNode = ArrayExt.pop(this._parentNodeStack);
         return this;
     }
 

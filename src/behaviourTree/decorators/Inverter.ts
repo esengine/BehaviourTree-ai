@@ -1,3 +1,6 @@
+/**
+ * 反转结果的子节点
+ */
 class Inverter<T> extends Decorator<T>{
     public update(context: T): TaskStatus{
         Assert.isNotNull(this.child, "child必须不能为空");

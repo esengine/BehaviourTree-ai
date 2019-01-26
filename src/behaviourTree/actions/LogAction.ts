@@ -1,3 +1,6 @@
+/**
+ * 简单的任务，它将输出指定的文本并返回成功。 它可以用于调试。
+ */
 class LogAction<T> extends Behavior<T>{
     public text: string;
     public isError: boolean;

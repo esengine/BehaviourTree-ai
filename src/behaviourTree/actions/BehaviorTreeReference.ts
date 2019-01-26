@@ -1,3 +1,6 @@
+/**
+ * 作为子项运行整个BehaviorTree并返回成功
+ */
 class BehaviorTreeReference<T> extends Behavior<T>{
     private _childTree: BehaviorTree<T>;
 
