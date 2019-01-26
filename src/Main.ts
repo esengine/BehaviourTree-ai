@@ -29,7 +29,8 @@
 
 class Main extends eui.UILayer {
 
-    private aiComponent: AiComponent;
+    private selfAbortTreeSample: SelfAbortTree;
+    private lowerPriorityAbortTreeSample: LowerPriorityAbortTree;
 
     protected createChildren(): void {
         super.createChildren();
@@ -101,12 +102,16 @@ class Main extends eui.UILayer {
     protected createGameScene(): void {
         this.addEventListener(egret.Event.ENTER_FRAME, this.onEnterFrame, this);
 
-        this.aiComponent = new AiComponent();
-        this.aiComponent.start();
+        this.selfAbortTreeSample = new SelfAbortTree();
+        this.selfAbortTreeSample.start();
+
+        this.lowerPriorityAbortTreeSample = new LowerPriorityAbortTree();
+        this.lowerPriorityAbortTreeSample.start();
     }
 
     private onEnterFrame(){
-        this.aiComponent.update();
+        // this.selfAbortTreeSample.update();
+        this.lowerPriorityAbortTreeSample.update();
     }
 
     /**

@@ -1,5 +1,5 @@
-class AiComponent{
-    private _tree: BehaviorTree<AiComponent>;
+class LowerPriorityAbortTree {
+    private _tree: BehaviorTree<LowerPriorityAbortTree>;
     public state: State = new State();
     private _distanceToNextLocation: number = 10;
     public update(){
@@ -10,11 +10,11 @@ class AiComponent{
     public start(){
         let builder = BehaviorTreeBuilder.begin(this);
 
-        builder.selector(AbortTypes.Self);
+        builder.selector();
 
         // 睡觉最重要
-        builder.conditionalDecoratorR(m => m.state.fatigue >= State.MAX_FATIGUE, false);
         builder.sequence(AbortTypes.LowerPriority)
+            .conditionalR(m => m.state.fatigue >= State.MAX_FATIGUE)
             .logAction("-- 累了,准备回家")
             .actionR(m => m.goToLocation(Locate.Home))
             .logAction("-- 准备上床")
@@ -22,8 +22,8 @@ class AiComponent{
             .endComposite();
 
         // 喝水第二重要
-        builder.conditionalDecoratorR(m => m.state.thirst >= State.MAX_THIRST, false);
         builder.sequence(AbortTypes.LowerPriority)
+            .conditionalR(m => m.state.thirst >= State.MAX_THIRST)
             .logAction("-- 渴了! 准备喝水")
             .actionR(m => m.goToLocation(Locate.Saloon))
             .logAction("-- 开始喝水")
@@ -31,8 +31,8 @@ class AiComponent{
             .endComposite();
 
         // 存钱第三重要
-        builder.conditionalDecoratorR(m => m.state.gold >= State.MAX_GOLD, false);
         builder.sequence(AbortTypes.LowerPriority)
+            .conditionalR(m => m.state.gold >= State.MAX_GOLD)
             .logAction( "--- 背包满了，准备去银行存钱." )
             .actionR( m => m.goToLocation( Locate.Bank ) )
             .logAction( "--- 开始存钱!" )
