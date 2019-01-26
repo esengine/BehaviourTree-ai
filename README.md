@@ -12,6 +12,18 @@
   - core    `egret核心扩展`
   - test    `示例工程`
 
+## 游戏实例
+
+![](sceenshot/sample.png)
+
 ## 关于此项目
 
 该项目由我的另一个项目 `CLEngine` 所提取出来的一个部分功能。如果你对该项目感兴趣，可以`Fork`该项目，另外请顺手`Star`一下该项目吧，后续还会更多对该项目的扩展。
+
+- 实用AI
+- 简单的状态机
+- 路径寻找
+  - AStar
+  - BreadthFirst
+  - Dijkstra
+- GOAP
