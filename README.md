@@ -181,10 +181,6 @@ this.lowerPriorityAbortTreeSample.update();
 
 ## 功能实现
 
-> [x] 代表已实现  
-[] 代表进行中  
-未有标志表示计划中
-
 - [x] 行为树
 - [ ] 实用AI
 - 简单的状态机
