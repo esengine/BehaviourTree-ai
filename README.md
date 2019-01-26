@@ -1,16 +1,61 @@
 # egret-BehaviourTree
-基于Egret开发的行为树（BehaviourTree）系统，一套已经非常完整的系统。大家可以自行看源代码来学习，项目当中也有一个示例，如果你对行为树也有更为深刻的理解可发起`pull request`请求或者提出`issue`。
+基于Egret开发的行为树（BehaviourTree）系统，一套已经非常完整的系统。大家可以自行看源代码来学习，项目当中也有好几个示例，如果对项目你有更多的解决方案可发起 `pull request`请求或者有任何疑问可发起`issue`。
 
 ## 目录结构
 
 - src `源目录`
   - behaviourTree   `行为树主目录`
-    - actions
-    - composites
-    - conditionals
-    - decorators
+    - actions `动作是行为树的节点。比如： 播放动画，触发事件等。`
+    - composites `Composites是行为树中的父节点，他们容纳一个或多个子节点，并以不同的方式执行。`
+    - conditionals `它们由IConditional接口标识。它们会检查游戏世界的某些情况，并返回成功或失败`
+    - decorators `装饰器可以通过各种方式修改子任务的行为，例如： 反转结果，运行知道失败等`
+  - utilityAI `实用AI主目录`
+    - actions `AI执行的操作`
+    - considerations `列出评估和行为清单。计算一个分数，用数字表示Action的有效使用情况。`
+    - reasoners `从附加的Reasoner的事项列表中选择最佳的事项。AI的根源`
   - core    `egret核心扩展`
   - test    `示例工程`
+    - utilityActions `实用AI示例目录`
+
+### 关于 `行为树`
+
+> 行为树由节点树组成。节点可以根据世界状态做出决策并执行操作。它包含一个BehaviorTreeBuilder类，它提供了一个用于设置行为树的API。BehaviorTreeBuilder是一种使行为树减少使用并快速启动的方法。
+
+#### Composites
+
+- Sequence 一旦子节点返回失败，就返回失败。如果子节点返回成功，它将在行为树的下一帧运行下一个子节点。
+- Selector 只要子节点任意一个返回成功，就返回成功。如果子节点返回失败，它将在行为树的下一帧运行下一个子节点。
+- Parallel 运行每个子节点直到子节点返回失败。它不同于Sequence仅在于它在每帧都会运行所有子节点
+- ParallelSelector 同Selector,除了它自身将在每帧都运行所有子节点
+- ParallelSequence 同Sequence,除了它自身将在每帧都运行所有子节点
+- RandomSequence 同Sequence，在执行前将子节点随机打乱后运行
+- RandomSelector 同Selector, 在执行前将子节点随机打乱后运行
+
+#### Conditional
+
+- RandomProbability: 当随机概率高于指定的成功率时返回成功
+- ExecuteActionConditional: 包装一个Func并未做Conditional执行。用于原型设计和避免为简单的条件创建单独的类。
+
+#### Decoration
+
+- AlwaysFail: 无论子结果如何，总是返回失败
+- AlwaysSuccedd: 无论子结果如何，总是返回成功
+- ConditionalDecorator: 包装条件，并且仅在满足条件时才运行其子项。
+- Repeater: 重复其子任务指定次数
+- UntilFail: 继续执行其子任务，直到返回失败
+- UntilSuccess: 继续执行其子任务，直到返回成功
+- Inverter: 反转子结果
+
+#### Action
+
+- ExecuteAction: 包装一个Func并将其作为动作执行。
+- WaitAction： 等待指定的时间
+- LogAction：将字符串记录到控制台用于调试。
+- BehaviorTreeReference:运行另一个行为树
+
+### 关于 `实用AI`
+
+> 最复杂的AI解决方案。最适合在动态环境中使用，基于效用的AI可以采取大量潜在竞争行为的情况。
 
 ## 游戏实例
 
@@ -182,8 +227,8 @@ this.lowerPriorityAbortTreeSample.update();
 ## 功能实现
 
 - [x] 行为树
-- [ ] 实用AI
-- 简单的状态机
+- [x] 实用AI
+- [ ] 简单的状态机
 - 路径寻找
   - AStar
   - BreadthFirst
