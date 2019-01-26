@@ -31,6 +31,7 @@ class Main extends eui.UILayer {
 
     private selfAbortTreeSample: SelfAbortTree;
     private lowerPriorityAbortTreeSample: LowerPriorityAbortTree;
+    private utilitySample: UtilitySample;
 
     protected createChildren(): void {
         super.createChildren();
@@ -107,11 +108,15 @@ class Main extends eui.UILayer {
 
         this.lowerPriorityAbortTreeSample = new LowerPriorityAbortTree();
         this.lowerPriorityAbortTreeSample.start();
+
+        this.utilitySample = new UtilitySample();
+        this.utilitySample.start();
     }
 
     private onEnterFrame(){
-        this.selfAbortTreeSample.update();
+        // this.selfAbortTreeSample.update();
         // this.lowerPriorityAbortTreeSample.update();
+        this.utilitySample.update();
     }
 
     /**
