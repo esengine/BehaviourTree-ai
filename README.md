@@ -1,5 +1,5 @@
 # egret-BehaviourTree
-基于Egret开发的行为树（BehaviourTree）系统，一套已经非常完整的系统。大家可以自行看源代码来学习，项目当中也有好几个示例，如果对项目你有更多的解决方案可发起 `pull request`请求或者有任何疑问可发起`issue`。
+基于Egret开发的AI（BehaviourTree、UtilityAI）系统，一套已经非常完整的系统。大家可以自行看源代码来学习，项目当中也有好几个示例，如果对项目你有更多的解决方案可发起 `pull request`请求或者有任何疑问可发起`issue`。
 
 ## 目录结构
 
