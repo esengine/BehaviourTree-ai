@@ -168,6 +168,17 @@ this.aiComponent.start();
 this.aiComponent.update();
 ```
 
+## 关于示例的使用
+
+只需要留下一个`egret.Event.ENTER_FRAME`下其中一个`update`。
+
+```typescript
+// this.selfAbortTreeSample.update();
+this.lowerPriorityAbortTreeSample.update();
+```
+
+> 只需要留下一个行为树例子。
+
 ## 关于此项目
 
 该项目由我的另一个项目 `CLEngine` 所提取出来的一个部分功能。如果你对该项目感兴趣，可以`Fork`该项目，另外请顺手`Star`一下该项目吧，后续还会更多对该项目的扩展。
