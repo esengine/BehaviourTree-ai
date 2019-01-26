@@ -37,34 +37,34 @@ class AiComponent{
         builder.conditionalDecoratorR(m => m.state.fatigue >= State.MAX_FATIGUE, false);
         builder.sequence(AbortTypes.LowerPriority)
             .logAction("-- 累了,准备回家")
-            .actionR(m => m.goToLocation(Locate.Home))
+            .action(m => m.goToLocation(Locate.Home))
             .logAction("-- 准备上床")
-            .actionR(m => m.sleep())
+            .action(m => m.sleep())
             .endComposite();
 
         // 喝水第二重要
         builder.conditionalDecoratorR(m => m.state.thirst >= State.MAX_THIRST, false);
         builder.sequence(AbortTypes.LowerPriority)
             .logAction("-- 渴了! 准备喝水")
-            .actionR(m => m.goToLocation(Locate.Saloon))
+            .action(m => m.goToLocation(Locate.Saloon))
             .logAction("-- 开始喝水")
-            .actionR(m => m.drink())
+            .action(m => m.drink())
             .endComposite();
 
         // 存钱第三重要
         builder.conditionalDecoratorR(m => m.state.gold >= State.MAX_GOLD, false);
         builder.sequence(AbortTypes.LowerPriority)
             .logAction( "--- 背包满了，准备去银行存钱." )
-            .actionR( m => m.goToLocation( Locate.Bank ) )
+            .action( m => m.goToLocation( Locate.Bank ) )
             .logAction( "--- 开始存钱!" )
-            .actionR( m => m.depositGold() )
+            .action( m => m.depositGold() )
             .endComposite();
 
         // 赚钱最后
         builder.sequence()
-            .actionR(m => m.goToLocation(Locate.Mine))
+            .action(m => m.goToLocation(Locate.Mine))
             .logAction("-- 开始挖矿！")
-            .actionR(m => m.digForGold())
+            .action(m => m.digForGold())
             .endComposite();
 
         builder.endComposite();
