@@ -39,13 +39,16 @@
 		"bin-debug/behaviourTree/decorators/Inverter.js",
 		"bin-debug/behaviourTree/decorators/Repeater.js",
 		"bin-debug/behaviourTree/decorators/UntilFail.js",
+		"bin-debug/behaviourTree/decorators/UntilSuccess.js",
 		"bin-debug/LoadingUI.js",
-		"bin-debug/core/ArrayExt.js",
 		"bin-debug/core/Assert.js",
 		"bin-debug/core/Mathf.js",
 		"bin-debug/core/Random.js",
 		"bin-debug/core/Timer.js",
 		"bin-debug/core/TimerItem.js",
+		"bin-debug/fsm/SimpleStateMachine.js",
+		"bin-debug/fsm/State.js",
+		"bin-debug/fsm/StateMachine.js",
 		"bin-debug/test/LowPriorityAbortTree.js",
 		"bin-debug/test/SelfAbortTree.js",
 		"bin-debug/test/State.js",
@@ -69,6 +72,6 @@
 		"bin-debug/utilityAI/considerations/appraisals/IAppraisal.js",
 		"bin-debug/utilityAI/reasoners/FirstScoreReasoner.js",
 		"bin-debug/utilityAI/reasoners/HighestScoreReasoner.js",
-		"bin-debug/behaviourTree/decorators/UntilSuccess.js"
+		"bin-debug/core/ArrayExt.js"
 	]
 }

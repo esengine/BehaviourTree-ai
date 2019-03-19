@@ -114,9 +114,9 @@ class Main extends eui.UILayer {
     }
 
     private onEnterFrame(){
-        // this.selfAbortTreeSample.update();
+        this.selfAbortTreeSample.update();
         // this.lowerPriorityAbortTreeSample.update();
-        this.utilitySample.update();
+        // this.utilitySample.update();
     }
 
     /**
