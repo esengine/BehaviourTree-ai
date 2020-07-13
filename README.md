@@ -223,7 +223,3 @@ this.lowerPriorityAbortTreeSample.update();
 ```
 
 > 只需要留下一个行为树例子。
-
-## QQ群交流
-
-1105070703
