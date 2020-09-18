@@ -226,25 +226,6 @@ declare class TimerItem {
     reset(): void;
 }
 declare module fsm {
-    abstract class SimpleStateMachine {
-        protected elapsedTimeInState: number;
-        protected previousState: string;
-        private _stateCache;
-        private _stateMethods;
-        private _currentState;
-        currentState: string;
-        protected initialState: string;
-        constructor();
-        update(): void;
-        setEnterMethod(stateName: string, enterState: Function, tickState: Function, exitState: Function): void;
-    }
-    class StateMethodCache {
-        enterState: Function;
-        tick: Function;
-        exitState: Function;
-    }
-}
-declare module fsm {
     abstract class State<T> {
         protected _machine: StateMachine<T>;
         protected _context: T;
@@ -265,8 +246,11 @@ declare module fsm {
         protected _currentState: State<T>;
         protected _context: T;
         private _states;
-        constructor(context: T, initialState: State<T>);
-        addState(state: State<T>): void;
+        constructor(context: T, initialStateType: any, initialState: State<T>);
+        addState(stateType: any, state: State<T>): void;
+        update(deltaTime: number): void;
+        getState<R extends State<T>>(type: any): R;
+        changeState<R extends State<T>>(newType: any): R;
     }
 }
 declare class UtilityAI<T> {

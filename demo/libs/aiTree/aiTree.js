@@ -840,63 +840,6 @@ var TimerItem = (function () {
 }());
 var fsm;
 (function (fsm) {
-    var SimpleStateMachine = (function () {
-        function SimpleStateMachine() {
-            this.elapsedTimeInState = 0;
-            this._stateCache = {};
-        }
-        Object.defineProperty(SimpleStateMachine.prototype, "currentState", {
-            get: function () {
-                return this._currentState;
-            },
-            set: function (value) {
-                if (this._currentState == value)
-                    return;
-                this.previousState = this._currentState;
-                this._currentState = value;
-                if (this._stateMethods.exitState != null)
-                    this._stateMethods.exitState();
-                this.elapsedTimeInState = 0;
-                this._stateMethods = this._stateCache[this._currentState];
-                if (this._stateMethods.enterState != null)
-                    this._stateMethods.enterState();
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(SimpleStateMachine.prototype, "initialState", {
-            set: function (value) {
-                this._currentState = value;
-                this._stateMethods = this._stateCache[this._currentState];
-                if (this._stateMethods.enterState != null)
-                    this._stateMethods.enterState();
-            },
-            enumerable: true,
-            configurable: true
-        });
-        SimpleStateMachine.prototype.update = function () {
-            if (this._stateMethods.tick != null)
-                this._stateMethods.tick();
-        };
-        SimpleStateMachine.prototype.setEnterMethod = function (stateName, enterState, tickState, exitState) {
-            var state = new StateMethodCache();
-            state.enterState = enterState;
-            state.tick = tickState;
-            state.exitState = exitState;
-            this._stateCache[stateName] = state;
-        };
-        return SimpleStateMachine;
-    }());
-    fsm.SimpleStateMachine = SimpleStateMachine;
-    var StateMethodCache = (function () {
-        function StateMethodCache() {
-        }
-        return StateMethodCache;
-    }());
-    fsm.StateMethodCache = StateMethodCache;
-})(fsm || (fsm = {}));
-var fsm;
-(function (fsm) {
     var State = (function () {
         function State() {
         }
@@ -916,11 +859,13 @@ var fsm;
 var fsm;
 (function (fsm) {
     var StateMachine = (function () {
-        function StateMachine(context, initialState) {
+        function StateMachine(context, initialStateType, initialState) {
             this.elapsedTimeInState = 0;
-            this._states = {};
+            this._states = new Map();
             this._context = context;
-            this.addState(initialState);
+            this.addState(initialStateType, initialState);
+            this._currentState = initialState;
+            this._currentState.begin();
         }
         Object.defineProperty(StateMachine.prototype, "currentState", {
             get: function () {
@@ -929,8 +874,40 @@ var fsm;
             enumerable: true,
             configurable: true
         });
-        StateMachine.prototype.addState = function (state) {
+        StateMachine.prototype.addState = function (stateType, state) {
             state.setMachineAndContext(this, this._context);
+            this._states.set(stateType, state);
+        };
+        StateMachine.prototype.update = function (deltaTime) {
+            this.elapsedTimeInState += deltaTime;
+            this._currentState.reason();
+            this._currentState.update(deltaTime);
+        };
+        StateMachine.prototype.getState = function (type) {
+            if (!this._states.has(type)) {
+                console.error("\u72B6\u6001" + type + "\u4E0D\u5B58\u5728\u3002\u4F60\u662F\u4E0D\u662F\u5728\u8C03\u7528addState\u7684\u65F6\u5019\u5FD8\u8BB0\u6DFB\u52A0\u4E86?");
+                return null;
+            }
+            return this._states.get(type);
+        };
+        StateMachine.prototype.changeState = function (newType) {
+            if (this._currentState instanceof newType) {
+                return this._currentState;
+            }
+            if (!this.currentState) {
+                this._currentState.end();
+            }
+            if (!this._states.has(newType)) {
+                console.error("\u72B6\u6001" + newType + "\u4E0D\u5B58\u5728\u3002\u4F60\u662F\u4E0D\u662F\u5728\u8C03\u7528addState\u7684\u65F6\u5019\u5FD8\u8BB0\u6DFB\u52A0\u4E86?");
+                return;
+            }
+            this.elapsedTimeInState = 0;
+            this.previousState = this._currentState;
+            this._currentState = this._states.get(newType);
+            this._currentState.begin();
+            if (this.onStateChanged)
+                this.onStateChanged();
+            return this._currentState;
         };
         return StateMachine;
     }());
