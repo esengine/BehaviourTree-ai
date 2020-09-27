@@ -894,7 +894,7 @@ var fsm;
             if (this._currentState instanceof newType) {
                 return this._currentState;
             }
-            if (!this.currentState) {
+            if (this.currentState) {
                 this._currentState.end();
             }
             if (!this._states.has(newType)) {

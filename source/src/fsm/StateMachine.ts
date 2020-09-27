@@ -62,7 +62,7 @@ module fsm{
                 return this._currentState as R;
             }
 
-            if (!this.currentState){
+            if (this.currentState){
                 this._currentState.end();
             }
 
