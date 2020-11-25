@@ -15,8 +15,7 @@ class UtilityAI<T>{
     }
 
     public tick(){
-        this._elapsedTime -= Number((1000 / Timer.deltaTime).toFixed(5)) / 10000;
-        // this._elapsedTime -= Timer.deltaTime;
+        this._elapsedTime -= es.Time.deltaTime;
         while (this._elapsedTime <= 0){
             this._elapsedTime += this.updatePeriod;
             let action = this._rootReasoner.select(this._context);

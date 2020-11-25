@@ -24,6 +24,10 @@
 		{
 			"name": "aiTree",
 			"path": "./libs/aiTree"
+		},
+		{
+			"name": "framework",
+			"path": "./libs/framework"
 		}
 	]
 }

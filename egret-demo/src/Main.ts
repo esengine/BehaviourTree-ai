@@ -38,6 +38,12 @@ class Main extends eui.UILayer {
 
         egret.lifecycle.addLifecycleListener((context) => {
             // custom lifecycle plugin
+            context.onUpdate = () => {
+                if (es.Core.Instance) {
+                    es.Time.update(egret.getTimer());
+                    es.Core.emitter.emit(es.CoreEvents.FrameUpdated);
+                }
+            }
         })
 
         egret.lifecycle.onPause = () => {
@@ -54,7 +60,7 @@ class Main extends eui.UILayer {
         egret.registerImplementation("eui.IAssetAdapter", assetAdapter);
         egret.registerImplementation("eui.IThemeAdapter", new ThemeAdapter());
 
-
+        let core = new es.Core(this.stage.stageWidth, this.stage.stageHeight);
         this.runGame().catch(e => {
             console.log(e);
         })

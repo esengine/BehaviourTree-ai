@@ -30,18 +30,13 @@ var Behavior = (function () {
 var BehaviorTree = (function () {
     function BehaviorTree(context, rootNode, updatePeriod) {
         if (updatePeriod === void 0) { updatePeriod = 0.2; }
-        this.lastUpdate = 0;
         this.stepUpdateCounter = 0;
         this._context = context;
         this._root = rootNode;
         this.updatePeriod = this._elapsedTime = updatePeriod;
-        this.lastUpdate = egret.getTimer();
     }
     BehaviorTree.prototype.tick = function () {
-        var now = egret.getTimer();
-        var dt = now - this.lastUpdate;
-        this.lastUpdate = now;
-        this.stepUpdateCounter += dt;
+        this.stepUpdateCounter += es.Time.deltaTime;
         if (this.updatePeriod > 0) {
             if (this.stepUpdateCounter >= this.updatePeriod) {
                 this._root.tick(this._context);
@@ -229,8 +224,8 @@ var WaitAciton = (function (_super) {
     };
     WaitAciton.prototype.update = function (context) {
         if (this._startTime == 0)
-            this._startTime = Timer.time;
-        if (Timer.time - this._startTime >= this.waitTime)
+            this._startTime = es.Time.totalTime;
+        if (es.Time.totalTime - this._startTime >= this.waitTime)
             return TaskStatus.Success;
         return TaskStatus.Running;
     };
@@ -289,12 +284,12 @@ var Composite = (function (_super) {
         this._children.push(child);
     };
     Composite.prototype.isFirstChildConditional = function () {
-        return egret.is(this._children[0], "IConditional");
+        return isIConditional(this._children[0]);
     };
     Composite.prototype.updateSelfAbortConditional = function (context, statusCheck) {
         for (var i = 0; i < this._currentChildIndex; i++) {
             var child = this._children[i];
-            if (!egret.is(child, "IConditional")) {
+            if (!isIConditional(child)) {
                 continue;
             }
             var status_1 = this.updateConditionalNode(context, child);
@@ -461,6 +456,7 @@ var ExecuteActionConditional = (function (_super) {
     }
     return ExecuteActionConditional;
 }(ExecuteAction));
+var isIConditional = function (props) { return typeof props['update'] !== 'undefined'; };
 var RandomProbability = (function (_super) {
     __extends(RandomProbability, _super);
     function RandomProbability(successProbability) {
@@ -519,7 +515,7 @@ var ConditionalDecorator = (function (_super) {
     function ConditionalDecorator(conditional, shouldReevalute) {
         if (shouldReevalute === void 0) { shouldReevalute = true; }
         var _this = _super.call(this) || this;
-        Assert.isTrue(egret.is(conditional, "IConditional"), "conditional 必须继承 IConditional");
+        Assert.isTrue(isIConditional(conditional), "conditional 必须继承 IConditional");
         _this._conditional = conditional;
         _this._shouldReevaluate = shouldReevalute;
         return _this;
@@ -705,109 +701,6 @@ var Random = (function () {
     };
     return Random;
 }());
-var Timer = (function () {
-    function Timer() {
-        this._enumI = 0;
-        this._enumCount = 0;
-        this._lastTimer = 0;
-        this._items = new Array();
-        this._itemPool = new Array();
-        this._lastTimer = egret.getTimer();
-        Timer.time = this._lastTimer;
-        egret.startTick(this.__timer, this);
-    }
-    Timer.prototype.getItem = function () {
-        if (this._itemPool.length)
-            return this._itemPool.pop();
-        else
-            return new TimerItem();
-    };
-    Timer.prototype.findItem = function (callback, thisObj) {
-        var len = this._items.length;
-        for (var i = 0; i < len; i++) {
-            var item = this._items[i];
-            if (item.callback == callback && item.thisObj == thisObj)
-                return item;
-        }
-        return null;
-    };
-    Timer.prototype.add = function (delayInMiniseconds, repeat, callback, thisObj, callbackParam) {
-        if (callbackParam === void 0) { callbackParam = null; }
-        var item = this.findItem(callback, thisObj);
-        if (!item) {
-            item = this.getItem();
-            item.callback = callback;
-            item.hasParam = callback.length == 1;
-            item.thisObj = thisObj;
-            this._items.push(item);
-        }
-        item.delay = delayInMiniseconds;
-        item.counter = 0;
-        item.repeat = repeat;
-        item.param = callbackParam;
-        item.end = false;
-    };
-    Timer.prototype.callLater = function (callback, thisObj, callbackParam) {
-        if (callbackParam === void 0) { callbackParam = null; }
-        this.add(1, 1, callback, thisObj, callbackParam);
-    };
-    Timer.prototype.callDelay = function (delay, callback, thisObj, callbackParam) {
-        if (callbackParam === void 0) { callbackParam = null; }
-        this.add(delay, 1, callback, thisObj, callbackParam);
-    };
-    Timer.prototype.callBy24Fps = function (callback, thisObj, callbackParam) {
-        if (callbackParam === void 0) { callbackParam = null; }
-        this.add(Timer.FPS24, 0, callback, thisObj, callbackParam);
-    };
-    Timer.prototype.exists = function (callback, thisObj) {
-        var item = this.findItem(callback, thisObj);
-        return item != null;
-    };
-    Timer.prototype.remove = function (callback, thisObj) {
-        var item = this.findItem(callback, thisObj);
-        if (item) {
-            var i = this._items.indexOf(item);
-            this._items.splice(i, 1);
-            if (i < this._enumI)
-                this._enumI--;
-            this._enumCount--;
-            item.reset();
-            this._itemPool.push(item);
-        }
-    };
-    Timer.prototype.__timer = function (TimerStamp) {
-        Timer.time = TimerStamp;
-        Timer.deltaTime = TimerStamp - this._lastTimer;
-        this._lastTimer = TimerStamp;
-        this._enumI = 0;
-        this._enumCount = this._items.length;
-        while (this._enumI < this._enumCount) {
-            var item = this._items[this._enumI];
-            this._enumI++;
-            if (item.advance(Timer.deltaTime)) {
-                if (item.end) {
-                    this._enumI--;
-                    this._enumCount--;
-                    this._items.splice(this._enumI, 1);
-                }
-                if (item.hasParam)
-                    item.callback.call(item.thisObj, item.param);
-                else
-                    item.callback.call(item.thisObj);
-                if (item.end) {
-                    item.reset();
-                    this._itemPool.push(item);
-                }
-            }
-        }
-        return false;
-    };
-    Timer.deltaTime = 0;
-    Timer.time = 0;
-    Timer.inst = new Timer();
-    Timer.FPS24 = 1000 / 24;
-    return Timer;
-}());
 var TimerItem = (function () {
     function TimerItem() {
         this.delay = 0;
@@ -921,7 +814,7 @@ var UtilityAI = (function () {
         this.updatePeriod = this._elapsedTime = updatePeriod;
     }
     UtilityAI.prototype.tick = function () {
-        this._elapsedTime -= Number((1000 / Timer.deltaTime).toFixed(5)) / 10000;
+        this._elapsedTime -= es.Time.deltaTime;
         while (this._elapsedTime <= 0) {
             this._elapsedTime += this.updatePeriod;
             var action = this._rootReasoner.select(this._context);

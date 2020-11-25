@@ -6,7 +6,8 @@
     "lib": [
       "es5",
       "dom",
-      "es2015.promise"
+      "es2015.promise",
+      "es6"
     ],
     "types": [],
     "sourceMap": true

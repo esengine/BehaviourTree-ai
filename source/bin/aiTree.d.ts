@@ -8,7 +8,6 @@ declare abstract class Behavior<T> {
 }
 declare class BehaviorTree<T> {
     updatePeriod: number;
-    lastUpdate: number;
     stepUpdateCounter: number;
     private _context;
     private _root;
@@ -130,6 +129,7 @@ declare class ExecuteActionConditional<T> extends ExecuteAction<T> implements IC
 interface IConditional<T> {
     update(context: T): TaskStatus;
 }
+declare var isIConditional: (props: any) => props is IConditional<any>;
 declare class RandomProbability<T> extends Behavior<T> implements IConditional<T> {
     private _successProbability;
     constructor(successProbability: number);
@@ -190,27 +190,6 @@ declare class Mathf {
 }
 declare class Random {
     static range(min: number, max: number): number;
-}
-declare class Timer {
-    private _items;
-    private _itemPool;
-    private _enumI;
-    private _enumCount;
-    private _lastTimer;
-    static deltaTime: number;
-    static time: number;
-    static inst: Timer;
-    private static FPS24;
-    constructor();
-    private getItem;
-    private findItem;
-    add(delayInMiniseconds: number, repeat: number, callback: Function, thisObj: any, callbackParam?: any): void;
-    callLater(callback: Function, thisObj: any, callbackParam?: any): void;
-    callDelay(delay: number, callback: Function, thisObj: any, callbackParam?: any): void;
-    callBy24Fps(callback: Function, thisObj: any, callbackParam?: any): void;
-    exists(callback: Function, thisObj: any): boolean;
-    remove(callback: Function, thisObj: any): void;
-    private __timer;
 }
 declare class TimerItem {
     delay: number;

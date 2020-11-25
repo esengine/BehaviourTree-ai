@@ -7,7 +7,6 @@ class BehaviorTree<T>{
      * 更新周期为0.2将使树每秒更新5次。
      */
     public updatePeriod: number;
-    public lastUpdate: number = 0;
     public stepUpdateCounter: number = 0;
     /**
      * 上下文应包含运行树所需的所有数据
@@ -24,14 +23,10 @@ class BehaviorTree<T>{
         this._root = rootNode;
 
         this.updatePeriod = this._elapsedTime = updatePeriod;
-        this.lastUpdate = egret.getTimer();
     }
 
     public tick(){
-        let now = egret.getTimer();
-        let dt = now - this.lastUpdate;
-        this.lastUpdate = now;
-        this.stepUpdateCounter += dt;
+        this.stepUpdateCounter += es.Time.deltaTime;
         /**
          * 小于或等于0的updatePeriod将标记每一帧
          */

@@ -59,7 +59,7 @@ abstract class Composite<T> extends Behavior<T>{
      */
     public isFirstChildConditional(): boolean
     {
-        return egret.is(this._children[0], "IConditional");
+        return isIConditional(this._children[0]);
     }
 
     /**
@@ -70,7 +70,7 @@ abstract class Composite<T> extends Behavior<T>{
         for (let i = 0; i < this._currentChildIndex; i++) {
             
             let child = this._children[i];
-            if (!egret.is(child, "IConditional")){
+            if (!isIConditional(child)){
                 continue;
             }
             

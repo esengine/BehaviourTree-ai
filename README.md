@@ -1,5 +1,5 @@
-# egret-BehaviourTree
-基于Egret开发的AI（BehaviourTree、UtilityAI）系统，一套已经非常完整的系统。大家可以自行看源代码来学习，项目当中也有好几个示例，如果对项目你有更多的解决方案可发起 `pull request`请求或者有任何疑问可发起`issue`。
+# BehaviourTree、UtilityAI、FSM
+基于ecs-framework开发的AI（BehaviourTree、UtilityAI、FSM）系统，一套已经非常完整的系统。大家可以自行看源代码来学习，项目当中也有好几个示例，如果对项目你有更多的解决方案可发起 `pull request`请求或者有任何疑问可发起`issue`。
 
 ## 目录结构
 
@@ -213,13 +213,8 @@ this.aiComponent.start();
 this.aiComponent.update();
 ```
 
-## 关于示例的使用
 
-只需要留下一个`egret.Event.ENTER_FRAME`下其中一个`update`。
 
-```typescript
-// this.selfAbortTreeSample.update();
-this.lowerPriorityAbortTreeSample.update();
-```
+## 依赖库
 
-> 只需要留下一个行为树例子。
+[ecs-framework](https://github.com/esengine/ecs-framework)

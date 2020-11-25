@@ -11,7 +11,7 @@ class ConditionalDecorator<T> extends Decorator<T> implements IConditional<T> {
     constructor(conditional: IConditional<T>, shouldReevalute: boolean = true){
         super();
 
-        Assert.isTrue( egret.is(conditional, "IConditional"), "conditional 必须继承 IConditional" );
+        Assert.isTrue( isIConditional(conditional), "conditional 必须继承 IConditional" );
         this._conditional = conditional;
         this._shouldReevaluate = shouldReevalute;
     }
