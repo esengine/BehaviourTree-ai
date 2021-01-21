@@ -1,9 +1,128 @@
 declare module es {
     /**
+     *  全局核心类
+     */
+    class Core {
+        /**
+         * 核心发射器。只发出核心级别的事件
+         */
+        static emitter: Emitter<CoreEvents>;
+        /**
+         * 启用/禁用焦点丢失时的暂停。如果为真，则不调用更新或渲染方法
+         */
+        static pauseOnFocusLost: boolean;
+        /**
+         * 是否启用调试渲染
+         */
+        static debugRenderEndabled: boolean;
+        /**
+         * 简化对内部类的全局内容实例的访问
+         */
+        private static _instance;
+        /**
+         * 用于确定是否应该使用EntitySystems
+         */
+        static entitySystemsEnabled: boolean;
+        /**
+         * 是否正在debug模式
+         * 仅允许在create时进行更改
+         */
+        readonly debug: boolean;
+        _nextScene: Scene;
+        /**
+         * 用于凝聚GraphicsDeviceReset事件
+         */
+        _graphicsDeviceChangeTimer: ITimer;
+        /**
+         * 全局访问系统
+         */
+        _globalManagers: GlobalManager[];
+        _coroutineManager: CoroutineManager;
+        _timerManager: TimerManager;
+        private constructor();
+        /**
+         * 提供对单例/游戏实例的访问
+         * @constructor
+         */
+        static readonly Instance: Core;
+        _frameCounterElapsedTime: number;
+        _frameCounter: number;
+        _totalMemory: number;
+        _titleMemory: (totalMemory: number, frameCounter: number) => void;
+        _scene: Scene;
+        /**
+         * 当前活动的场景。注意，如果设置了该设置，在更新结束之前场景实际上不会改变
+         */
+        /**
+        * 当前活动的场景。注意，如果设置了该设置，在更新结束之前场景实际上不会改变
+        * @param value
+        */
+        static scene: Scene;
+        /**
+         * 默认实现创建核心
+         */
+        static create(debug?: boolean): Core;
+        /**
+         * 添加一个全局管理器对象，它的更新方法将调用场景前的每一帧。
+         * @param manager
+         */
+        static registerGlobalManager(manager: es.GlobalManager): void;
+        /**
+         * 删除全局管理器对象
+         * @param manager
+         */
+        static unregisterGlobalManager(manager: es.GlobalManager): void;
+        /**
+         * 获取类型为T的全局管理器
+         * @param type
+         */
+        static getGlobalManager<T extends es.GlobalManager>(type: any): T;
+        /**
+         * 启动一个coroutine。Coroutine可以将number延时几秒或延时到其他startCoroutine.Yielding
+         * null将使coroutine在下一帧被执行。
+         * @param enumerator
+         */
+        static startCoroutine(enumerator: any): ICoroutine;
+        /**
+         * 调度一个一次性或重复的计时器，该计时器将调用已传递的动作
+         * @param timeInSeconds
+         * @param repeats
+         * @param context
+         * @param onTime
+         */
+        static schedule(timeInSeconds: number, repeats: boolean, context: any, onTime: (timer: ITimer) => void): Timer;
+        startDebugUpdate(): void;
+        endDebugUpdate(): void;
+        startDebugDraw(): void;
+        /**
+         * 在一个场景结束后，下一个场景开始之前调用
+         */
+        onSceneChanged(): void;
+        protected initialize(): void;
+        protected update(currentTime?: number): Promise<void>;
+    }
+}
+declare module es {
+    enum LogType {
+        error = 0,
+        warn = 1,
+        log = 2,
+        info = 3,
+        trace = 4
+    }
+    class Debug {
+        static warnIf(condition: boolean, format: string, ...args: any[]): void;
+        static warn(format: string, ...args: any[]): void;
+        static error(format: string, ...args: any[]): void;
+        static log(type: LogType, format: string, ...args: any[]): void;
+    }
+}
+declare module es {
+    /**
      * 我们在这里存储了各种系统的默认颜色，如对撞机调试渲染、Debug.drawText等。
      * 命名方式尽可能采用CLASS-THING，以明确它的使用位置
      */
-    class Debug {
+    class DebugDefault {
         static debugText: number;
         static colliderBounds: number;
         static colliderEdge: number;
@@ -41,10 +160,6 @@ declare module es {
          */
         entity: Entity;
         /**
-         * 更新该组件的时间间隔。这与实体的更新间隔无关。
-         */
-        updateInterval: number;
-        /**
          * 快速访问 this.entity.transform
          */
         readonly transform: Transform;
@@ -78,7 +193,6 @@ declare module es {
          * @param comp
          */
         onEntityTransformChanged(comp: transform.Component): void;
-        debugRender(batcher: IBatcher): void;
         /**
          *当父实体或此组件启用时调用
          */
@@ -94,33 +208,13 @@ declare module es {
 declare module es {
     enum CoreEvents {
         /**
-         * 在图形设备重置时触发。当这种情况发生时，任何渲染目标或其他内容的VRAM将被擦除，需要重新生成
-         */
-        GraphicsDeviceReset = 0,
-        /**
          * 当场景发生变化时触发
          */
-        SceneChanged = 1,
+        sceneChanged = 0,
         /**
-         * 当设备方向改变时触发
+         * 每帧更新事件
          */
-        OrientationChanged = 2,
-        /**
-         * 当每帧事件触发时
-         */
-        FrameUpdated = 3,
-        /**
-         * 当Core.useCustomUpdate为true时则派发该事件
-         */
-        SceneUpdated = 4,
-        /**
-         * 当场景需要绘制时
-         */
-        CallDraw = 5,
-        /**
-         * 当需要GC时
-         */
-        CallGC = 6
+        frameUpdated = 1
     }
 }
 declare module es {
@@ -258,11 +352,6 @@ declare module es {
          */
         update(): void;
         /**
-         * 自定义渲染器可以选择是否调用它
-         * @param batcher
-         */
-        debugRender(batcher: IBatcher): void;
-        /**
          * 将组件添加到组件列表中。返回组件。
          * @param component
          */
@@ -309,33 +398,176 @@ declare module es {
     }
 }
 declare module es {
+    /** 2d 向量 */
+    class Vector2 implements IEquatable<Vector2> {
+        x: number;
+        y: number;
+        /**
+         * 从两个值构造一个带有X和Y的二维向量。
+         * @param x 二维空间中的x坐标
+         * @param y 二维空间的y坐标
+         */
+        constructor(x?: number, y?: number);
+        static readonly zero: Vector2;
+        static readonly one: Vector2;
+        static readonly unitX: Vector2;
+        static readonly unitY: Vector2;
+        /**
+         *
+         * @param value1
+         * @param value2
+         */
+        static add(value1: Vector2, value2: Vector2): Vector2;
+        /**
+         *
+         * @param value1
+         * @param value2
+         */
+        static divide(value1: Vector2, value2: Vector2): Vector2;
+        /**
+         *
+         * @param value1
+         * @param value2
+         */
+        static multiply(value1: Vector2, value2: Vector2): Vector2;
+        /**
+         *
+         * @param value1
+         * @param value2
+         */
+        static subtract(value1: Vector2, value2: Vector2): Vector2;
+        /**
+         * 创建一个新的Vector2
+         * 它包含来自另一个向量的标准化值。
+         * @param value
+         */
+        static normalize(value: Vector2): Vector2;
+        /**
+         * 返回两个向量的点积
+         * @param value1
+         * @param value2
+         */
+        static dot(value1: Vector2, value2: Vector2): number;
+        /**
+         * 返回两个向量之间距离的平方
+         * @param value1
+         * @param value2
+         */
+        static distanceSquared(value1: Vector2, value2: Vector2): number;
+        /**
+         * 将指定的值限制在一个范围内
+         * @param value1
+         * @param min
+         * @param max
+         */
+        static clamp(value1: Vector2, min: Vector2, max: Vector2): Vector2;
+        /**
+         * 创建一个新的Vector2，其中包含指定向量的线性插值
+         * @param value1 第一个向量
+         * @param value2 第二个向量
+         * @param amount 加权值(0.0-1.0之间)
+         * @returns 指定向量的线性插值结果
+         */
+        static lerp(value1: Vector2, value2: Vector2, amount: number): Vector2;
+        /**
+         * 创建一个新的Vector2，该Vector2包含了通过指定的Matrix进行的二维向量变换。
+         * @param position
+         * @param matrix
+         */
+        static transform(position: Vector2, matrix: Matrix2D): Vector2;
+        /**
+         * 返回两个向量之间的距离
+         * @param value1
+         * @param value2
+         * @returns 两个向量之间的距离
+         */
+        static distance(value1: Vector2, value2: Vector2): number;
+        /**
+         * 返回两个向量之间的角度，单位是度数
+         * @param from
+         * @param to
+         */
+        static angle(from: Vector2, to: Vector2): number;
+        /**
+         * 创建一个包含指定向量反转的新Vector2
+         * @param value
+         * @returns 矢量反演的结果
+         */
+        static negate(value: Vector2): Vector2;
+        /**
+         *
+         * @param value
+         */
+        add(value: Vector2): Vector2;
+        /**
+         *
+         * @param value
+         */
+        divide(value: Vector2): Vector2;
+        /**
+         *
+         * @param value
+         */
+        multiply(value: Vector2): Vector2;
+        /**
+         * 从当前Vector2减去一个Vector2
+         * @param value 要减去的Vector2
+         * @returns 当前Vector2
+         */
+        subtract(value: Vector2): this;
+        /**
+         * 将这个Vector2变成一个方向相同的单位向量
+         */
+        normalize(): void;
+        /** 返回它的长度 */
+        length(): number;
+        /**
+         * 返回该Vector2的平方长度
+         * @returns 这个Vector2的平方长度
+         */
+        lengthSquared(): number;
+        /**
+         * 四舍五入X和Y值
+         */
+        round(): Vector2;
+        /**
+         * 返回以自己为中心点的左右角，单位为度
+         * @param left
+         * @param right
+         */
+        angleBetween(left: Vector2, right: Vector2): number;
+        /**
+         * 比较当前实例是否等于指定的对象
+         * @param other 要比较的对象
+         * @returns 如果实例相同true 否则false
+         */
+        equals(other: Vector2 | object): boolean;
+        clone(): Vector2;
+    }
+}
+declare module es {
+    enum SceneResolutionPolicy {
+        /**
+         * 默认情况下，RenderTarget与屏幕大小匹配。RenderTarget与屏幕大小相匹配
+         */
+        none = 0,
+        /**
+         * 该应用程序采用最适合设计分辨率的宽度和高度
+         */
+        bestFit = 1
+    }
     /** 场景 */
     class Scene {
-        /**
-         * 默认场景 摄像机
-         */
-        camera: ICamera;
         /**
          * 这个场景中的实体列表
          */
         readonly entities: EntityList;
-        /** 管理当前在场景中的所有RenderableComponents的列表 Entitys */
-        readonly renderableComponents: RenderableComponentList;
-        /**
-         * 如果设置了，最终渲染到屏幕上的时间可以推迟到这个委托。
-         * 这实际上只在最终渲染可能需要全屏大小效果的情况下有用，即使使用了一个小的后置缓冲区
-         */
-        finalRenderDelegate: IFinalRenderDelegate;
-        private _finalRenderDelegate;
         /**
          * 管理所有实体处理器
          */
         readonly entityProcessors: EntityProcessorList;
-        private _screenshotRequestCallback;
         readonly _sceneComponents: SceneComponent[];
-        _renderers: IRenderer[];
-        readonly _afterPostProcessorRenderers: IRenderer[];
-        _didSceneBegin: boolean;
+        private _didSceneBegin;
         constructor();
         /**
          * 在场景子类中重写这个，然后在这里进行加载。
@@ -353,22 +585,7 @@ declare module es {
         unload(): void;
         begin(): void;
         end(): void;
-        updateResolutionScaler(): void;
-        /**
-         * 下一次绘制完成后，这将克隆回缓冲区，并调用回调与clone。
-         * 注意，当使用完Texture后，你必须处理掉它
-         * @param callback
-         */
-        requestScreenshot(callback: (texture: any) => void): void;
         update(): void;
-        render(): void;
-        /**
-         * 任何存在的PostProcessors都可以进行处理，然后我们对RenderTarget进行最后的渲染。
-         * 几乎在所有情况下，finalRenderTarget都是空的。
-         * 只有在场景转换的第一帧中，如果转换请求渲染，它才会有一个值。
-         * @param finalRenderTarget
-         */
-        postRender(finalRenderTarget?: any): void;
         /**
          * 向组件列表添加并返回SceneComponent
          * @param component
@@ -389,21 +606,6 @@ declare module es {
          * @param component
          */
         removeSceneComponent(component: SceneComponent): void;
-        /**
-         * 添加一个渲染器到场景中
-         * @param renderer
-         */
-        addRenderer<T extends IRenderer>(renderer: T): T;
-        /**
-         * 得到第一个T型的渲染器
-         * @param type
-         */
-        getRenderer<T extends IRenderer>(type: any): T;
-        /**
-         * 从场景中移除渲染器
-         * @param renderer
-         */
-        removeRenderer(renderer: IRenderer): void;
         /**
          * 将实体添加到此场景，并返回它
          * @param name
@@ -471,7 +673,7 @@ declare module es {
         clean = 0,
         positionDirty = 1,
         scaleDirty = 2,
-        rotationDirty = 3
+        rotationDirty = 4
     }
     class Transform {
         /** 与此转换关联的实体 */
@@ -1028,7 +1230,6 @@ declare module es {
          * @param height
          */
         setHeight(height: number): void;
-        debugRender(batcher: IBatcher): void;
         toString(): string;
     }
 }
@@ -1048,7 +1249,6 @@ declare module es {
          * @param radius
          */
         setRadius(radius: number): CircleCollider;
-        debugRender(batcher: IBatcher): void;
         toString(): string;
     }
 }
@@ -1062,177 +1262,6 @@ declare module es {
          * @param points
          */
         constructor(points: Vector2[]);
-        debugRender(batcher: IBatcher): void;
-    }
-}
-declare module es {
-    /**
-     * 接口，当应用于一个Component时，它将被注册到场景渲染器中。
-     * 请仔细实现这个功能 改变像layerDepth/renderLayer/material这样的东西需要更新Scene RenderableComponentList
-     */
-    interface IRenderable {
-        /** 包裹此对象的AABB。用来进行相机筛选 */
-        bounds: Rectangle;
-        /** 这个IRenderable是否应该被渲染 */
-        enabled: boolean;
-        /**
-         * 标准的Batcher图层深度，0为前面，1为后面。
-         * 改变这个值会触发场景中可渲染组件列表的排序
-         */
-        layerDepth: number;
-        /**
-         * 较低的renderLayers在前面，较高的在後面，就像layerDepth一样，但不是限制在0-1。
-         * 请注意，这意味着较高的renderLayers首先被发送到Batcher。在使用模板缓冲区时，这是一个重要的事实
-         */
-        renderLayer: number;
-        /**
-         * 由渲染器使用，用于指定该精灵应如何渲染。
-         * 如果非空，当组件从实体中移除时，它会被自动处理。
-         */
-        material: any;
-        /**
-         * 这个Renderable的可见性。
-         * 状态的改变最终会调用onBecameVisible/onBecameInvisible方法
-         */
-        isVisible: boolean;
-        /**
-         * 用于检索一个已经铸造的Material子类的帮助程序
-         */
-        getMaterial<T extends IMaterial>(): T;
-        /**
-         * 如果Renderables的边界与Camera.bounds相交，则返回true。
-         * 处理isVisible标志的状态切换。
-         * 在你的渲染方法中使用这个方法来决定你是否应该渲染
-         * @param camera
-         */
-        isVisibleFromCamera(camera: ICamera): boolean;
-        /**
-         * 被渲染器调用。摄像机可以用来进行裁剪，并使用Batcher实例进行绘制
-         * @param batcher
-         * @param camera
-         */
-        render(batcher: IBatcher, camera: ICamera): any;
-        /**
-         * 只有在没有对撞机的情况下才会渲染边界。
-         * 始终在原点上渲染一个正方形
-         * @param batcher
-         */
-        debugRender(batcher: IBatcher): any;
-    }
-    /**
-     * 对IRenderables进行排序的比较器。
-     * 首先按 RenderLayer 排序，然后按 LayerDepth 排序。
-     * 如果出现平局，则使用材料作为平局的断定器，以避免渲染状态的改变
-     */
-    class RenderableComparer implements IComparer<IRenderable> {
-        compare(self: IRenderable, other: IRenderable): number;
-    }
-}
-declare module es {
-    /**
-     * IRenderable的具体实现。包含方便的方法。
-     * 非常重要！子类必须覆盖width/height或bounds! 子类必须覆盖width/height或bounds!
-     */
-    abstract class RenderableComponent extends Component implements IRenderable, IComparer<RenderableComponent> {
-        /**
-         * 不重写bounds属性的子类必须实现这个！RenderableComponent的宽度。
-         */
-        readonly width: number;
-        /**
-         * 不重写bounds属性的子类必须实现这个!
-         */
-        readonly height: number;
-        /**
-         * 包裹此对象的AABB。用来进行相机筛选。
-         */
-        readonly bounds: Rectangle;
-        /**
-         * 标准的Batcher图层深度，0为前面，1为后面。
-         * 改变这个值会触发场景中可渲染组件列表的排序。
-         */
-        layerDepth: number;
-        /**
-         * 较低的renderLayers在前面，较高的在后面，就像layerDepth一樣，但不是限制在0-1。
-         * 请注意，这意味着更高的renderLayers首先被发送到Batcher。
-         */
-        renderLayer: number;
-        /**
-         * 由渲染器使用，用于指定该精灵的渲染方式
-         */
-        material: IMaterial;
-        /**
-         * 偏移。用于将多个Renderables添加到需要特定定位的实体
-         */
-        localOffset: Vector2;
-        /**
-         * 这个Renderable的可见性。
-         * 状态的改变最终会调用onBecameVisible/onBecameInvisible方法
-         */
-        isVisible: boolean;
-        debugRenderEnabled: boolean;
-        protected _localOffset: Vector2;
-        protected _layerDepth: number;
-        protected _renderLayer: number;
-        protected _bounds: Rectangle;
-        protected _isVisble: boolean;
-        protected _areBoundsDirty: boolean;
-        onEntityTransformChanged(comp: transform.Component): void;
-        /**
-         * 被渲染器调用。摄像机可以用来进行裁剪，并使用Batcher实例进行绘制
-         * @param batcher
-         * @param camera
-         */
-        abstract render(batcher: IBatcher, camera: ICamera): any;
-        /**
-         * 只有在没有对撞机的情况下才会渲染边界。始终在原点上渲染一个正方形
-         * @param batcher
-         */
-        debugRender(batcher: IBatcher): void;
-        /**
-         * 当Renderable进入相机帧时被调用。
-         * 请注意，如果您的Renderer没有使用isVisibleFromCamera来进行裁剪检查，这些方法将不会被调用。
-         * 所有默认的Renderer都会这样做
-         */
-        protected onBecameVisible(): void;
-        /**
-         * 当渲染器退出相机帧时，将调用这些方法。
-         * 请注意，如果你的Renderer没有使用isVisibleFromCamera来进行Culling检查，这些方法将不会被调用。
-         * 所有默认的Renderer都会这样做
-         */
-        protected onBecameInvisible(): void;
-        onRemovedFromEntity(): void;
-        /**
-         * 如果Renderables的边界与Camera.bounds相交，则返回true。
-         * 处理isVisible标志的状态切换。在你的渲染方法中使用这个方法来决定你是否应该渲染
-         * @param camera
-         */
-        isVisibleFromCamera(camera: ICamera): boolean;
-        setMaterial(material: IMaterial): this;
-        /**
-         * 标准的Batcher图层深度，0为前面，1为后面。
-         * 改变这个值会触发一种类似于renderableComponents的方法
-         * @param layerDepth
-         */
-        setLayerDepth(layerDepth: number): RenderableComponent;
-        /**
-        * 较低的渲染层在前面，较高的在后面
-        * @param renderLayer
-        */
-        setRenderLayer(renderLayer: number): RenderableComponent;
-        /**
-         * 偏移。用于将多个Renderables添加到需要特定定位的实体
-         * @param offset
-         */
-        setLocalOffset(offset: Vector2): RenderableComponent;
-        /**
-         * 用于检索一个已经铸造的Material子类的帮助程序
-         */
-        getMaterial<T extends IMaterial>(): T;
-        /**
-         * 先按renderLayer排序，再按layerDepth排序，最后按材质排序
-         * @param other
-         */
-        compare(other: RenderableComponent): 1 | 0 | -1;
     }
 }
 declare module es {
@@ -1383,7 +1412,6 @@ declare module es {
         onEntityTransformChanged(comp: transform.Component): void;
         onEntityEnabled(): void;
         onEntityDisabled(): void;
-        debugRender(batcher: IBatcher): void;
     }
 }
 declare module es {
@@ -1536,38 +1564,6 @@ declare module es {
         all(...types: any[]): Matcher;
         exclude(...types: any[]): this;
         one(...types: any[]): this;
-    }
-}
-declare module es {
-    class RenderableComponentList {
-        static compareUpdatableOrder: IComparer<IRenderable>;
-        /**
-         * 添加到实体的组件列表
-         */
-        private _components;
-        /**
-         * 通过renderLayer跟踪组件，便于检索
-         */
-        private _componentsByRenderLayer;
-        private _unsortedRenderLayers;
-        private _componentsNeedSort;
-        readonly count: number;
-        get(index: number): IRenderable;
-        add(component: IRenderable): void;
-        remove(component: IRenderable): void;
-        updateRenderableRenderLayer(component: IRenderable, oldRenderLayer: number, newRenderLayer: number): void;
-        /**
-         * 弄脏RenderLayers排序标志，导致所有组件的重新排序
-         * @param renderLayer
-         */
-        setRenderLayerNeedsComponentSort(renderLayer: number): void;
-        private addToRenderLayerList;
-        /**
-         * 获取所有给定renderLayer的组件。组件列表是预先排序的。
-         * @param renderLayer
-         */
-        componentsWithRenderLayer(renderLayer: number): IRenderable[];
-        updateList(): void;
     }
 }
 declare class StringUtils {
@@ -1749,169 +1745,6 @@ declare class TimeUtils {
      * 输出   3600000
      */
     static timeToMillisecond(time: string, partition?: string): string;
-}
-declare module es {
-    interface IBatcher {
-        /**
-         * 创建投影矩阵时要使用的矩阵
-         */
-        transformMatrix: Matrix;
-        /**
-         * 如果为true，则将在绘制目标位置之前将其四舍五入
-         */
-        shouldRoundDestinations: boolean;
-        disposed(): any;
-        begin(effect: any, transformationMatrix: Matrix, disableBatching: boolean): any;
-        end(): any;
-        prepRenderState(): any;
-        /**
-         * 设置是否应忽略位置舍入。在为调试绘制基元时很有用
-         */
-        setIgnoreRoundingDestinations(shouldIgnore: boolean): any;
-        drawHollowRect(rect: Rectangle, color: number, thickness?: number): any;
-        drawHollowBounds(x: number, y: number, width: number, height: number, color: number, thickness: number): any;
-        drawLine(start: Vector2, end: Vector2, color: number, thickness: any): any;
-        drawLineAngle(start: Vector2, radians: number, length: number, color: number, thickness: number): any;
-        draw(texture: any, position: Vector2): any;
-        flushBatch(): any;
-        drawPrimitives(texture: any, baseSprite: number, batchSize: number): any;
-        drawPixel(position: Vector2, color: number, size?: number): any;
-        drawPolygon(position: Vector2, points: Vector2[], color: number, closePoly?: boolean, thickness?: number): any;
-        drawCircle(position: Vector2, radius: number, color: number, thickness?: number, resolution?: number): any;
-    }
-}
-declare module es {
-    interface ICamera extends Component {
-        position: Vector2;
-        rotation: number;
-        rawZoom: number;
-        zoom: number;
-        minimumZoom: number;
-        maximumZoom: number;
-        bounds: Rectangle;
-        transformMatrix: Matrix2D;
-        inverseTransformMatrix: Matrix2D;
-        projectionMatrix: Matrix;
-        viewprojectionMatrix: Matrix;
-        origin: Vector2;
-        setInset(left: number, right: number, top: number, bottom: number): ICamera;
-        setPosition(position: Vector2): ICamera;
-        setRotation(rotation: number): ICamera;
-        setZoom(zoom: number): ICamera;
-        setMinimumZoom(minZoom: number): ICamera;
-        setMaximumZoom(maxZoom: number): ICamera;
-        forceMatrixUpdate(): any;
-        onEntityTransformChanged(comp: transform.Component): any;
-        zoomIn(deltaZoom: number): any;
-        zoomOut(deltaZoom: number): any;
-        worldToScreenPoint(worldPosition: Vector2): Vector2;
-        screenToWorldPoint(screenPosition: Vector2): Vector2;
-        onSceneRenderTargetSizeChanged(newWidth: number, newHeight: number): any;
-    }
-}
-declare module es {
-    /**
-     * 可选接口，可以添加到任何对象中，用于特殊情况下需要覆盖最终渲染到屏幕。
-     * 请注意，如果有IFinalRenderDelegate存在，Scene.screenshotRequestCallback将不会像预期的那样工作。
-     */
-    interface IFinalRenderDelegate {
-        /**
-         * 在添加到场景中时调用
-         * @param scene
-         */
-        onAddedToScene(scene: Scene): any;
-        /**
-         * 当后置缓冲区大小改变时调用
-         * @param newWidth
-         * @param newHeight
-         */
-        onSceneBackBufferSizeChanged(newWidth: number, newHeight: number): any;
-        /**
-         * 这个被场景调用，这样就可以处理最终的渲染。渲染应该在finalRenderTarget中完成。
-         * 在大多数情况下，finalRenderTarget将是空的，所以渲染将只是到回缓冲区。
-         * finalRenderTarget只有在场景转换的第一帧时才会被设置，其中转换已经请求了上一个场景的渲染
-         * @param finalRenderTarget
-         * @param source
-         * @param finalRenderDestinationRect
-         */
-        handleFinalRender(finalRenderTarget: any, source: any, finalRenderDestinationRect: Rectangle): any;
-        /**
-         * 场景结束时调用。在这里释放任何资源
-         */
-        unload(): any;
-    }
-}
-declare module es {
-    /**
-     * 便利的子类，有一个单一的属性，可以投递Effect，使配置更简单
-     */
-    interface IMaterial {
-        /**
-         * Batcher为当前RenderableComponent使用的效果
-         */
-        effect: any;
-        dispose(): any;
-        onPreRender(camera: ICamera): any;
-        compareTo(other: IMaterial): number;
-        clone(): IMaterial;
-    }
-}
-declare module es {
-    interface IRenderer {
-        /**
-         * Batcher使用的材料。任何RenderableComponent都可以覆盖它
-         */
-        material: IMaterial;
-        /**
-        * 渲染器用于渲染的Camera(实际上是它的transformMatrix和culling的边界)。
-        * 这是一个方便的字段，不是必需的。
-        * 渲染器子类可以在调用beginRender时选择使用的摄像机
-        */
-        camera: ICamera;
-        /**
-         * 指定场景调用渲染器的顺序
-         */
-        renderOrder: number;
-        /**
-         * 如果renderTarget不是空的，这个渲染器将渲染到RenderTarget中，而不是渲染到屏幕上
-         */
-        renderTexture: any;
-        /**
-         * 标志，决定是否要调试渲染。
-         * 渲染方法接收一个bool(debugRenderEnabled)让渲染器知道全局调试渲染是否开启/关闭。
-         * 然后渲染器使用本地的bool来决定是否应该调试渲染
-         */
-        shouldDebugRender: boolean;
-        /**
-         * 如果为true，场景将使用场景RenderTarget调用SetRenderTarget。
-         * 如果Renderer有一个renderTexture，默认的实现会返回true
-         */
-        wantsToRenderToSceneRenderTarget: boolean;
-        /**
-         * 如果为true，场景将在所有后处理器完成后调用渲染方法。
-         * 这必须在调用Scene.addRenderer生效之前设置为true，并且Renderer不应该有renderTexture。
-         * 使用这种类型的渲染器的主要原因是为了让你可以在不进行后期处理的情况下，在Scene的其余部分上渲染你的UI。
-         * ScreenSpaceRenderer是一个将此设置为真的Renderer例子
-         */
-        wantsToRenderAfterPostProcessors: boolean;
-        /**
-         * 当Renderer被添加到场景中时被调用
-         * @param scene
-         */
-        onAddedToScene(scene: Scene): any;
-        /**
-         * 当场景结束或该渲染器从场景中移除时，调用该函数，用于清理
-         */
-        unload(): any;
-        render(scene: Scene): any;
-        /**
-         * 当默认的场景RenderTarget被调整大小时，以及在场景已经开始的情况下添加一个Renderer时，会被调用。
-         * @param newWidth
-         * @param newHeight
-         */
-        onSceneBackBufferSizeChanged(newWidth: number, newHeight: number): any;
-        compare(other: IRenderer): number;
-    }
 }
 declare module es {
     /**
@@ -2540,154 +2373,6 @@ declare module es {
          * 将余数重置为0
          */
         reset(): void;
-    }
-}
-declare module es {
-    /** 2d 向量 */
-    class Vector2 implements IEquatable<Vector2> {
-        x: number;
-        y: number;
-        /**
-         * 从两个值构造一个带有X和Y的二维向量。
-         * @param x 二维空间中的x坐标
-         * @param y 二维空间的y坐标
-         */
-        constructor(x?: number, y?: number);
-        static readonly zero: Vector2;
-        static readonly one: Vector2;
-        static readonly unitX: Vector2;
-        static readonly unitY: Vector2;
-        /**
-         *
-         * @param value1
-         * @param value2
-         */
-        static add(value1: Vector2, value2: Vector2): Vector2;
-        /**
-         *
-         * @param value1
-         * @param value2
-         */
-        static divide(value1: Vector2, value2: Vector2): Vector2;
-        /**
-         *
-         * @param value1
-         * @param value2
-         */
-        static multiply(value1: Vector2, value2: Vector2): Vector2;
-        /**
-         *
-         * @param value1
-         * @param value2
-         */
-        static subtract(value1: Vector2, value2: Vector2): Vector2;
-        /**
-         * 创建一个新的Vector2
-         * 它包含来自另一个向量的标准化值。
-         * @param value
-         */
-        static normalize(value: Vector2): Vector2;
-        /**
-         * 返回两个向量的点积
-         * @param value1
-         * @param value2
-         */
-        static dot(value1: Vector2, value2: Vector2): number;
-        /**
-         * 返回两个向量之间距离的平方
-         * @param value1
-         * @param value2
-         */
-        static distanceSquared(value1: Vector2, value2: Vector2): number;
-        /**
-         * 将指定的值限制在一个范围内
-         * @param value1
-         * @param min
-         * @param max
-         */
-        static clamp(value1: Vector2, min: Vector2, max: Vector2): Vector2;
-        /**
-         * 创建一个新的Vector2，其中包含指定向量的线性插值
-         * @param value1 第一个向量
-         * @param value2 第二个向量
-         * @param amount 加权值(0.0-1.0之间)
-         * @returns 指定向量的线性插值结果
-         */
-        static lerp(value1: Vector2, value2: Vector2, amount: number): Vector2;
-        /**
-         * 创建一个新的Vector2，该Vector2包含了通过指定的Matrix进行的二维向量变换。
-         * @param position
-         * @param matrix
-         */
-        static transform(position: Vector2, matrix: Matrix2D): Vector2;
-        /**
-         * 返回两个向量之间的距离
-         * @param value1
-         * @param value2
-         * @returns 两个向量之间的距离
-         */
-        static distance(value1: Vector2, value2: Vector2): number;
-        /**
-         * 返回两个向量之间的角度，单位是度数
-         * @param from
-         * @param to
-         */
-        static angle(from: Vector2, to: Vector2): number;
-        /**
-         * 创建一个包含指定向量反转的新Vector2
-         * @param value
-         * @returns 矢量反演的结果
-         */
-        static negate(value: Vector2): Vector2;
-        /**
-         *
-         * @param value
-         */
-        add(value: Vector2): Vector2;
-        /**
-         *
-         * @param value
-         */
-        divide(value: Vector2): Vector2;
-        /**
-         *
-         * @param value
-         */
-        multiply(value: Vector2): Vector2;
-        /**
-         * 从当前Vector2减去一个Vector2
-         * @param value 要减去的Vector2
-         * @returns 当前Vector2
-         */
-        subtract(value: Vector2): this;
-        /**
-         * 将这个Vector2变成一个方向相同的单位向量
-         */
-        normalize(): void;
-        /** 返回它的长度 */
-        length(): number;
-        /**
-         * 返回该Vector2的平方长度
-         * @returns 这个Vector2的平方长度
-         */
-        lengthSquared(): number;
-        /**
-         * 四舍五入X和Y值
-         */
-        round(): Vector2;
-        /**
-         * 返回以自己为中心点的左右角，单位为度
-         * @param left
-         * @param right
-         */
-        angleBetween(left: Vector2, right: Vector2): number;
-        /**
-         * 比较当前实例是否等于指定的对象
-         * @param other 要比较的对象
-         * @returns 如果实例相同true 否则false
-         */
-        equals(other: Vector2 | object): boolean;
-        clone(): Vector2;
     }
 }
 declare module es {
@@ -3384,7 +3069,7 @@ declare module es {
          * @param eventType 事件类型
          * @param data 事件数据
          */
-        emit(eventType: T, data?: any): void;
+        emit(eventType: T, ...data: any[]): void;
     }
 }
 declare module es {
@@ -3505,12 +3190,17 @@ declare module es {
     }
 }
 declare module es {
-    /**
-     * 使得number/string/boolean类型作为对象引用来进行传递
-     */
-    class Ref<T extends number | string | boolean> {
+    class Ref<T> {
         value: T;
         constructor(value: T);
+    }
+}
+declare module es {
+    class Screen {
+        static width: number;
+        static height: number;
+        static readonly size: Vector2;
+        static readonly center: Vector2;
     }
 }
 declare module es {
@@ -3552,7 +3242,7 @@ declare module es {
         private initialize;
     }
 }
-declare namespace stopwatch {
+declare namespace es {
     /**
      * 记录时间的持续时间，一些设计灵感来自物理秒表。
      */
@@ -3663,6 +3353,71 @@ declare namespace stopwatch {
         readonly endTime: number;
         /** 该切片的运行时间 */
         readonly duration: number;
+    }
+}
+declare module es {
+    class TimeRuler {
+        /**
+         * 最大条数
+         */
+        static readonly maxBars: number;
+        /**
+         * 每条的最大样本数
+         */
+        static readonly maxSamples: number;
+        /**
+         *
+         */
+        static readonly maxNestCall: number;
+        /**
+         * 最大显示帧数
+         */
+        static readonly maxSampleFrames: number;
+        /**
+         * 拍摄快照的时间（以帧数为单位）
+         */
+        static readonly logSnapDuration: number;
+        private logs;
+        private prevLog;
+        private curLog;
+        private frameCount;
+        private stopwatch;
+        private markers;
+        private markerNameToIdMap;
+        enabled: boolean;
+        private static _instance;
+        static readonly Instance: TimeRuler;
+        /**
+         * 你想在Game.Update方法的开头调用StartFrame。
+         * 但是当游戏在固定时间步长模式下运行缓慢时，Game.Update会被多次调用。
+         * 在这种情况下，我们应该忽略StartFrame的调用，为了做到这一点，我们只需要跟踪StartFrame的调用次数
+         */
+        private updateCount;
+        constructor();
+        startFrame(): void;
+        /**
+         * 开始测量时间
+         * @param markerName
+         * @param color
+         * @param barIndex
+         */
+        beginMark(markerName: string, color: number, barIndex?: number): void;
+        /**
+         * 停止测量
+         * @param markerName
+         * @param barIndex
+         */
+        endMark(markerName: string, barIndex?: number): void;
+        /**
+         * 获取给定条形指数和标记名称的平均时间
+         * @param barIndex
+         * @param markerName
+         */
+        getAverageTime(barIndex: number, markerName: string): number;
+        /**
+         * 重置标记记录
+         */
+        resetLog(): void;
     }
 }
 declare module es {
@@ -4170,10 +3925,10 @@ declare class RandomUtils {
      */
     static randrange(start: number, stop: number, step?: number): number;
     /**
-     * 返回a 到 b直间的随机整数，包括 a 和 b
+     * 返回a 到 b之间的随机整数，包括 a 和 b
      * @param a
      * @param b
-     * @return [a, b] 直接的随机整数
+     * @return [a, b] 之间的随机整数
      *
      */
     static randint(a: number, b: number): number;
@@ -4706,7 +4461,7 @@ declare module es {
          * @param a
          * @param b
          */
-        compare(a: EndPoint, b: EndPoint): 1 | 0 | -1;
+        compare(a: EndPoint, b: EndPoint): 0 | 1 | -1;
     }
 }
 declare module es {
