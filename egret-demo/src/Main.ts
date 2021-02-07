@@ -41,7 +41,7 @@ class Main extends eui.UILayer {
             context.onUpdate = () => {
                 if (es.Core.Instance) {
                     es.Time.update(egret.getTimer());
-                    es.Core.emitter.emit(es.CoreEvents.FrameUpdated);
+                    es.Core.emitter.emit(es.CoreEvents.frameUpdated);
                 }
             }
         })
@@ -60,7 +60,7 @@ class Main extends eui.UILayer {
         egret.registerImplementation("eui.IAssetAdapter", assetAdapter);
         egret.registerImplementation("eui.IThemeAdapter", new ThemeAdapter());
 
-        let core = new es.Core(this.stage.stageWidth, this.stage.stageHeight);
+        es.Core.create(false);
         this.runGame().catch(e => {
             console.log(e);
         })
@@ -80,25 +80,12 @@ class Main extends eui.UILayer {
             const loadingView = new LoadingUI();
             this.stage.addChild(loadingView);
             await RES.loadConfig("resource/default.res.json", "resource/");
-            await this.loadTheme();
             await RES.loadGroup("preload", 0, loadingView);
             this.stage.removeChild(loadingView);
         }
         catch (e) {
             console.error(e);
         }
-    }
-
-    private loadTheme() {
-        return new Promise((resolve, reject) => {
-            // load skin theme configuration file, you can manually modify the file. And replace the default skin.
-            //加载皮肤主题配置文件,可以手动修改这个文件。替换默认皮肤。
-            let theme = new eui.Theme("resource/default.thm.json", this.stage);
-            theme.addEventListener(eui.UIEvent.COMPLETE, () => {
-                resolve();
-            }, this);
-
-        })
     }
 
     private textfield: egret.TextField;
@@ -119,7 +106,7 @@ class Main extends eui.UILayer {
         this.utilitySample.start();
     }
 
-    private onEnterFrame(){
+    private onEnterFrame() {
         this.selfAbortTreeSample.update();
         // this.lowerPriorityAbortTreeSample.update();
         // this.utilitySample.update();

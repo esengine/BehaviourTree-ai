@@ -352,6 +352,11 @@ declare module es {
          */
         update(): void;
         /**
+         * 创建组件的新实例。返回实例组件
+         * @param componentType
+         */
+        createComponent<T extends Component>(componentType: new () => T): T;
+        /**
          * 将组件添加到组件列表中。返回组件。
          * @param component
          */
@@ -858,15 +863,6 @@ declare module es {
     }
 }
 declare module es {
-    class ComponentPool<T extends PooledComponent> {
-        private _cache;
-        private _type;
-        constructor(typeClass: any);
-        obtain(): T;
-        free(component: T): void;
-    }
-}
-declare module es {
     /**
      * 接口，当添加到一个Component时，只要Component和实体被启用，它就会在每个框架中调用更新方法。
      */
@@ -882,12 +878,6 @@ declare module es {
         compare(a: IUpdatable, b: IUpdatable): number;
     }
     var isIUpdatable: (props: any) => props is IUpdatable;
-}
-declare module es {
-    /** 回收实例的组件类型。 */
-    abstract class PooledComponent extends Component {
-        abstract reset(): any;
-    }
 }
 declare module es {
     class SceneComponent implements IComparer<SceneComponent> {
@@ -1272,6 +1262,9 @@ declare module es {
         private _entities;
         constructor(matcher?: Matcher);
         private _scene;
+        /**
+         * 这个系统所属的场景
+         */
         scene: Scene;
         private _matcher;
         readonly matcher: Matcher;
@@ -1283,10 +1276,96 @@ declare module es {
         onRemoved(entity: Entity): void;
         update(): void;
         lateUpdate(): void;
+        /**
+         * 在系统处理开始前调用
+         * 在下一个系统开始处理或新的处理回合开始之前（以先到者为准），使用此方法创建的任何实体都不会激活
+         */
         protected begin(): void;
         protected process(entities: Entity[]): void;
         protected lateProcess(entities: Entity[]): void;
+        /**
+         * 系统处理完毕后调用
+         */
         protected end(): void;
+        /**
+         * 系统是否需要处理
+         *
+         * 在启用系统时有用，但仅偶尔需要处理
+         * 这只影响处理，不影响事件或订阅列表
+         * @returns 如果系统应该处理，则为true，如果不处理则为false。
+         */
+        protected checkProcessing(): boolean;
+    }
+}
+declare module es {
+    /**
+     * 追踪每个实体的冷却时间，当实体的计时器耗尽时进行处理
+     *
+     * 一个示例系统将是ExpirationSystem，该系统将在特定生存期后删除实体。
+     * 你不必运行会为每个实体递减timeLeft值的系统
+     * 而只需使用此系统在寿命最短的实体时在将来执行
+     * 然后重置系统在未来的某一个最短命实体的时间运行
+     *
+     * 另一个例子是一个动画系统
+     * 你知道什么时候你必须对某个实体进行动画制作，比如300毫秒内。
+     * 所以你可以设置系统以300毫秒为单位运行来执行动画
+     *
+     * 这将在某些情况下节省CPU周期
+     */
+    abstract class DelayedIteratingSystem extends EntitySystem {
+        /**
+         * 一个实体应被处理的时间
+         */
+        private delay;
+        /**
+         * 如果系统正在运行，并倒计时延迟
+         */
+        private running;
+        /**
+         * 倒计时
+         */
+        private acc;
+        constructor(matcher: Matcher);
+        protected process(entities: Entity[]): void;
+        protected checkProcessing(): boolean;
+        /**
+         * 只有当提供的延迟比系统当前计划执行的时间短时，才会重新启动系统。
+         * 如果系统已经停止（不运行），那么提供的延迟将被用来重新启动系统，无论其值如何
+         * 如果系统已经在倒计时，并且提供的延迟大于剩余时间，系统将忽略它。
+         * 如果提供的延迟时间短于剩余时间，系统将重新启动，以提供的延迟时间运行。
+         * @param offeredDelay
+         */
+        offerDelay(offeredDelay: number): void;
+        /**
+         * 处理本系统感兴趣的实体
+         * 从实体定义的延迟中抽象出accumulativeDelta
+         * @param entity
+         * @param accumulatedDelta 本系统最后一次执行后的delta时间
+         */
+        protected abstract processDelta(entity: Entity, accumulatedDelta: number): any;
+        protected abstract processExpired(entity: Entity): any;
+        /**
+         * 返回该实体处理前的延迟时间
+         * @param entity
+         */
+        protected abstract getRemainingDelay(entity: Entity): number;
+        /**
+         * 获取系统被命令处理实体后的初始延迟
+         */
+        getInitialTimeDelay(): number;
+        /**
+         * 获取系统计划运行前的时间
+         * 如果系统没有运行，则返回零
+         */
+        getRemainingTimeUntilProcessing(): number;
+        /**
+         * 检查系统是否正在倒计时处理
+         */
+        isRunning(): boolean;
+        /**
+         * 停止系统运行，中止当前倒计时
+         */
+        stop(): void;
     }
 }
 declare module es {
@@ -1310,6 +1389,81 @@ declare module es {
          */
         protected process(entities: Entity[]): void;
         protected lateProcess(entities: Entity[]): void;
+    }
+}
+declare module es {
+    /**
+     * 实体系统以一定的时间间隔进行处理
+     */
+    abstract class IntervalSystem extends EntitySystem {
+        /**
+         * 累积增量以跟踪间隔
+         */
+        protected acc: number;
+        /**
+         * 更新之间需要等待多长时间
+         */
+        private readonly interval;
+        private intervalDelta;
+        constructor(matcher: Matcher, interval: number);
+        protected checkProcessing(): boolean;
+        /**
+         * 获取本系统上次处理后的实际delta值
+         */
+        protected getIntervalDelta(): number;
+    }
+}
+declare module es {
+    /**
+     * 每x个ticks处理一个实体的子集
+     *
+     * 典型的用法是每隔一定的时间间隔重新生成弹药或生命值
+     * 而无需在每个游戏循环中都进行
+     * 而是每100毫秒一次或每秒
+     */
+    abstract class IntervalIteratingSystem extends IntervalSystem {
+        constructor(matcher: Matcher, interval: number);
+        /**
+         * 处理本系统感兴趣的实体
+         * @param entity
+         */
+        abstract processEntity(entity: Entity): any;
+        protected process(entities: Entity[]): void;
+    }
+}
+declare module es {
+    /**
+     * JobSystem使用实体的子集调用Execute（entities），并在指定数量的线程上分配工作负载。
+     */
+    abstract class JobSystem extends EntitySystem {
+        readonly _threads: number;
+        readonly _jobs: Job[];
+        readonly _executeStr: string;
+        constructor(matcher: Matcher, threads: number);
+        protected process(entities: Entity[]): void;
+        private queueOnThread;
+        /**
+         * 当操作完成时，改变的值需要用户进行手动传递
+         * 由于worker数据无法共享，所以这块需要特殊处理
+         * @example this.test = job[0].context.test;
+         * @param job
+         */
+        protected abstract resetJob(job: Job): any;
+        /**
+         * 对指定实体进行多线程操作
+         * @param entity
+         */
+        protected abstract execute(entity: Entity): any;
+    }
+    class Job {
+        entities: Entity[];
+        from: number;
+        to: number;
+        worker: Worker;
+        execute: string;
+        err: string;
+        context: any;
+        set(entities: Entity[], from: number, to: number, execute: string, context: any): void;
     }
 }
 declare module es {
@@ -1347,6 +1501,127 @@ declare module es {
         nextSetBit(from: number): number;
         set(pos: number, value?: boolean): void;
         private ensure;
+    }
+}
+declare module es {
+    /**
+     * 性能优化的位组实现。某些操作是以不安全为前缀的, 这些方法不执行验证，主要是在内部利用来优化实体ID位集的访问
+     */
+    class BitVector {
+        private words;
+        /**
+         * 创建一个初始大小足够大的bitset，以明确表示0到nbits-1范围内指数的bit
+         * @param nbits nbits 位集的初始大小
+         */
+        constructor(nbits?: number | BitVector);
+        /**
+         *
+         * @param index 位的索引
+         * @returns 该位是否被设置
+         */
+        get(index: number): boolean;
+        /**
+         *
+         * @param index 位的索引
+         */
+        set(index: number, value?: boolean): void;
+        /**
+         *
+         * @param index 位的索引
+         * @returns 该位是否被设置
+         */
+        unsafeGet(index: number): boolean;
+        /**
+         *
+         * @param index 要设置的位的索引
+         */
+        unsafeSet(index: number): void;
+        /**
+         *
+         * @param index 要翻转的位的索引
+         */
+        flip(index: number): void;
+        /**
+         * 要清除的位的索引
+         * @param index
+         */
+        clear(index?: number): void;
+        /**
+         * 返回该位组的 "逻辑大小"：位组中最高设置位的索引加1。如果比特集不包含集合位，则返回0
+         */
+        length(): number;
+        /**
+         * @returns 如果这个位组中没有设置为true的位，则为true
+         */
+        isEmpty(): boolean;
+        /**
+         * 返回在指定的起始索引上或之后出现的第一个被设置为真的位的索引。
+         * 如果不存在这样的位，则返回-1
+         * @param fromIndex
+         */
+        nextSetBit(fromIndex: number): number;
+        /**
+         * 返回在指定的起始索引上或之后发生的第一个被设置为false的位的索引
+         * @param fromIndex
+         */
+        nextClearBit(fromIndex: number): number;
+        /**
+         * 对这个目标位集和参数位集进行逻辑AND。
+         * 这个位集被修改，使它的每一个位都有值为真，如果且仅当它最初的值为真，并且位集参数中的相应位也有值为真
+         * @param other
+         */
+        and(other: BitVector): void;
+        /**
+         * 清除该位集的所有位，其对应的位被设置在指定的位集中
+         * @param other
+         */
+        andNot(other: BitVector): void;
+        /**
+         * 用位集参数执行这个位集的逻辑OR。
+         * 如果且仅当位集参数中的位已经有值为真或位集参数中的对应位有值为真时，该位集才会被修改，从而使位集中的位有值为真
+         * @param other
+         */
+        or(other: BitVector): void;
+        /**
+         * 用位集参数对这个位集进行逻辑XOR。
+         * 这个位集被修改了，所以如果且仅当以下语句之一成立时，位集中的一个位的值为真
+         * @param other
+         */
+        xor(other: BitVector): void;
+        /**
+         * 如果指定的BitVector有任何位被设置为true，并且在这个BitVector中也被设置为true，则返回true
+         * @param other
+         */
+        intersects(other: BitVector): boolean;
+        /**
+         * 如果这个位集是指定位集的超级集，即它的所有位都被设置为真，那么返回true
+         * @param other
+         */
+        containsAll(other: BitVector): boolean;
+        cardinality(): number;
+        hashCode(): number;
+        private bitCount;
+        /**
+         * 返回二进制补码二进制表示形式中最高位（“最左端”）一位之前的零位数量
+         * @param i
+         */
+        private numberOfLeadingZeros;
+        /**
+         * 返回指定二进制数的补码二进制表示形式中最低序（“最右”）一位之后的零位数量
+         * @param i
+         */
+        numberOfTrailingZeros(i: number): number;
+        /**
+         *
+         * @param index 要清除的位的索引
+         */
+        unsafeClear(index: number): void;
+        /**
+         * 增长支持数组，使其能够容纳所请求的位
+         * @param bits 位数
+         */
+        ensureCapacity(bits: number): void;
+        private checkCapacity;
     }
 }
 declare module es {
@@ -1443,7 +1718,7 @@ declare module es {
         /**
          * 通过标签跟踪实体，便于检索
          */
-        _entityDict: Map<number, Entity[]>;
+        _entityDict: Map<number, Set<Entity>>;
         _unsortedTags: Set<number>;
         constructor(scene: Scene);
         readonly count: number;
@@ -1469,7 +1744,7 @@ declare module es {
          * @param entity
          */
         contains(entity: Entity): boolean;
-        getTagList(tag: number): Entity[];
+        getTagList(tag: number): Set<Entity>;
         addToTagList(entity: Entity): void;
         removeFromTagList(entity: Entity): void;
         update(): void;
@@ -1745,6 +2020,23 @@ declare class TimeUtils {
      * 输出   3600000
      */
     static timeToMillisecond(time: string, partition?: string): string;
+}
+declare module es {
+    /**
+     * 开辟一个新线程
+     * 注意：它无法获得主线程中的上下文
+     */
+    class WorkerUtils {
+        /** 正在执行的队列 */
+        private static readonly pendingJobs;
+        private static jobIdGen;
+        /**
+         * 创建一个worker
+         * @param doFunc worker所能做的事情
+         */
+        static makeWorker(doFunc: Function): Worker;
+        static workerMessage(worker: Worker): (...message: any[]) => Promise<{}>;
+    }
 }
 declare module es {
     /**

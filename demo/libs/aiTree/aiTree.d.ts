@@ -24,15 +24,15 @@ declare class BehaviorTreeBuilder<T> {
     private setChildOnParent;
     private pushParentNode;
     private endDecorator;
-    action(func: Function): BehaviorTreeBuilder<T>;
-    actionR(func: Function): BehaviorTreeBuilder<T>;
-    conditional(func: Function): BehaviorTreeBuilder<T>;
-    conditionalR(func: Function): BehaviorTreeBuilder<T>;
+    action(func: (t: T) => TaskStatus): BehaviorTreeBuilder<T>;
+    actionR(func: (t: T) => boolean): BehaviorTreeBuilder<T>;
+    conditional(func: (t: T) => TaskStatus): BehaviorTreeBuilder<T>;
+    conditionalR(func: (t: T) => boolean): BehaviorTreeBuilder<T>;
     logAction(text: string): BehaviorTreeBuilder<T>;
     waitAction(waitTime: number): BehaviorTreeBuilder<T>;
     subTree(subTree: BehaviorTree<T>): BehaviorTreeBuilder<T>;
-    conditionalDecorator(func: Function, shouldReevaluate?: boolean): BehaviorTreeBuilder<T>;
-    conditionalDecoratorR(func: Function, shouldReevaluate?: boolean): BehaviorTreeBuilder<T>;
+    conditionalDecorator(func: (t: T) => TaskStatus, shouldReevaluate?: boolean): BehaviorTreeBuilder<T>;
+    conditionalDecoratorR(func: (t: T) => boolean, shouldReevaluate?: boolean): BehaviorTreeBuilder<T>;
     alwaysFail(): BehaviorTreeBuilder<T>;
     alwaysSucceed(): BehaviorTreeBuilder<T>;
     inverter(): BehaviorTreeBuilder<T>;
@@ -61,7 +61,7 @@ declare class BehaviorTreeReference<T> extends Behavior<T> {
 }
 declare class ExecuteAction<T> extends Behavior<T> {
     private _action;
-    constructor(action: Function);
+    constructor(action: (t: T) => TaskStatus);
     update(context: T): TaskStatus;
 }
 declare class LogAction<T> extends Behavior<T> {
@@ -124,7 +124,7 @@ declare class RandomSequence<T> extends Sequence<T> {
     onStart(): void;
 }
 declare class ExecuteActionConditional<T> extends ExecuteAction<T> implements IConditional<T> {
-    constructor(action: Function);
+    constructor(action: (t: T) => TaskStatus);
 }
 interface IConditional<T> {
     update(context: T): TaskStatus;

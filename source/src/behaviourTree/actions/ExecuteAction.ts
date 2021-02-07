@@ -5,18 +5,18 @@ class ExecuteAction<T> extends Behavior<T>{
     /**
      * Func<T, TaskStatus>
      */
-    private _action: Function;
+    private _action: (t: T) => TaskStatus;
 
     /**
      * Func<T, TaskStatus>
      */
-    public constructor(action: Function){
+    public constructor(action: (t: T) => TaskStatus) {
         super();
 
         this._action = action;
     }
 
-    public update(context: T): TaskStatus{
+    public update(context: T): TaskStatus {
         Assert.isNotNull(this._action, "action 必须不为空");
 
         return this._action(context);

@@ -929,6 +929,15 @@ var es;
             this.components.update();
         };
         /**
+         * 创建组件的新实例。返回实例组件
+         * @param componentType
+         */
+        Entity.prototype.createComponent = function (componentType) {
+            var component = new componentType();
+            this.addComponent(component);
+            return component;
+        };
+        /**
          * 将组件添加到组件列表中。返回组件。
          * @param component
          */
@@ -1954,29 +1963,6 @@ var es;
 })(es || (es = {}));
 var es;
 (function (es) {
-    var ComponentPool = /** @class */ (function () {
-        function ComponentPool(typeClass) {
-            this._type = typeClass;
-            this._cache = [];
-        }
-        ComponentPool.prototype.obtain = function () {
-            try {
-                return this._cache.length > 0 ? this._cache.shift() : new this._type();
-            }
-            catch (err) {
-                throw new Error(this._type + err);
-            }
-        };
-        ComponentPool.prototype.free = function (component) {
-            component.reset();
-            this._cache.push(component);
-        };
-        return ComponentPool;
-    }());
-    es.ComponentPool = ComponentPool;
-})(es || (es = {}));
-var es;
-(function (es) {
     /**
      * 用于比较组件更新排序
      */
@@ -1990,18 +1976,6 @@ var es;
     }());
     es.IUpdatableComparer = IUpdatableComparer;
     es.isIUpdatable = function (props) { return typeof props['update'] !== 'undefined'; };
-})(es || (es = {}));
-var es;
-(function (es) {
-    /** 回收实例的组件类型。 */
-    var PooledComponent = /** @class */ (function (_super) {
-        __extends(PooledComponent, _super);
-        function PooledComponent() {
-            return _super !== null && _super.apply(this, arguments) || this;
-        }
-        return PooledComponent;
-    }(es.Component));
-    es.PooledComponent = PooledComponent;
 })(es || (es = {}));
 var es;
 (function (es) {
@@ -2913,6 +2887,9 @@ var es;
             this._matcher = matcher ? matcher : es.Matcher.empty();
         }
         Object.defineProperty(EntitySystem.prototype, "scene", {
+            /**
+             * 这个系统所属的场景
+             */
             get: function () {
                 return this._scene;
             },
@@ -2944,33 +2921,160 @@ var es;
             this._entities.push(entity);
             this.onAdded(entity);
         };
-        EntitySystem.prototype.onAdded = function (entity) {
-        };
+        EntitySystem.prototype.onAdded = function (entity) { };
         EntitySystem.prototype.remove = function (entity) {
             new linq.List(this._entities).remove(entity);
             this.onRemoved(entity);
         };
-        EntitySystem.prototype.onRemoved = function (entity) {
-        };
+        EntitySystem.prototype.onRemoved = function (entity) { };
         EntitySystem.prototype.update = function () {
-            this.begin();
-            this.process(this._entities);
+            if (this.checkProcessing()) {
+                this.begin();
+                this.process(this._entities);
+            }
         };
         EntitySystem.prototype.lateUpdate = function () {
-            this.lateProcess(this._entities);
-            this.end();
+            if (this.checkProcessing()) {
+                this.lateProcess(this._entities);
+                this.end();
+            }
         };
-        EntitySystem.prototype.begin = function () {
-        };
-        EntitySystem.prototype.process = function (entities) {
-        };
-        EntitySystem.prototype.lateProcess = function (entities) {
-        };
-        EntitySystem.prototype.end = function () {
+        /**
+         * 在系统处理开始前调用
+         * 在下一个系统开始处理或新的处理回合开始之前（以先到者为准），使用此方法创建的任何实体都不会激活
+         */
+        EntitySystem.prototype.begin = function () { };
+        EntitySystem.prototype.process = function (entities) { };
+        EntitySystem.prototype.lateProcess = function (entities) { };
+        /**
+         * 系统处理完毕后调用
+         */
+        EntitySystem.prototype.end = function () { };
+        /**
+         * 系统是否需要处理
+         *
+         * 在启用系统时有用，但仅偶尔需要处理
+         * 这只影响处理，不影响事件或订阅列表
+         * @returns 如果系统应该处理，则为true，如果不处理则为false。
+         */
+        EntitySystem.prototype.checkProcessing = function () {
+            return true;
         };
         return EntitySystem;
     }());
     es.EntitySystem = EntitySystem;
+})(es || (es = {}));
+///<reference path="./EntitySystem.ts"/>
+var es;
+///<reference path="./EntitySystem.ts"/>
+(function (es) {
+    /**
+     * 追踪每个实体的冷却时间，当实体的计时器耗尽时进行处理
+     *
+     * 一个示例系统将是ExpirationSystem，该系统将在特定生存期后删除实体。
+     * 你不必运行会为每个实体递减timeLeft值的系统
+     * 而只需使用此系统在寿命最短的实体时在将来执行
+     * 然后重置系统在未来的某一个最短命实体的时间运行
+     *
+     * 另一个例子是一个动画系统
+     * 你知道什么时候你必须对某个实体进行动画制作，比如300毫秒内。
+     * 所以你可以设置系统以300毫秒为单位运行来执行动画
+     *
+     * 这将在某些情况下节省CPU周期
+     */
+    var DelayedIteratingSystem = /** @class */ (function (_super) {
+        __extends(DelayedIteratingSystem, _super);
+        function DelayedIteratingSystem(matcher) {
+            var _this = _super.call(this, matcher) || this;
+            /**
+             * 一个实体应被处理的时间
+             */
+            _this.delay = 0;
+            /**
+             * 如果系统正在运行，并倒计时延迟
+             */
+            _this.running = false;
+            /**
+             * 倒计时
+             */
+            _this.acc = 0;
+            return _this;
+        }
+        DelayedIteratingSystem.prototype.process = function (entities) {
+            var processed = entities.length;
+            if (processed == 0) {
+                this.stop();
+                return;
+            }
+            this.delay = Number.MAX_VALUE;
+            for (var i = 0; processed > i; i++) {
+                var e = entities[i];
+                this.processDelta(e, this.acc);
+                var remaining = this.getRemainingDelay(e);
+                if (remaining <= 0) {
+                    this.processExpired(e);
+                }
+                else {
+                    this.offerDelay(remaining);
+                }
+            }
+            this.acc = 0;
+        };
+        DelayedIteratingSystem.prototype.checkProcessing = function () {
+            if (this.running) {
+                this.acc += es.Time.deltaTime;
+                return this.acc >= this.delay;
+            }
+            return false;
+        };
+        /**
+         * 只有当提供的延迟比系统当前计划执行的时间短时，才会重新启动系统。
+         * 如果系统已经停止（不运行），那么提供的延迟将被用来重新启动系统，无论其值如何
+         * 如果系统已经在倒计时，并且提供的延迟大于剩余时间，系统将忽略它。
+         * 如果提供的延迟时间短于剩余时间，系统将重新启动，以提供的延迟时间运行。
+         * @param offeredDelay
+         */
+        DelayedIteratingSystem.prototype.offerDelay = function (offeredDelay) {
+            if (!this.running) {
+                this.running = true;
+                this.delay = offeredDelay;
+            }
+            else {
+                this.delay = Math.min(this.delay, offeredDelay);
+            }
+        };
+        /**
+         * 获取系统被命令处理实体后的初始延迟
+         */
+        DelayedIteratingSystem.prototype.getInitialTimeDelay = function () {
+            return this.delay;
+        };
+        /**
+         * 获取系统计划运行前的时间
+         * 如果系统没有运行，则返回零
+         */
+        DelayedIteratingSystem.prototype.getRemainingTimeUntilProcessing = function () {
+            if (this.running) {
+                return this.delay - this.acc;
+            }
+            return 0;
+        };
+        /**
+         * 检查系统是否正在倒计时处理
+         */
+        DelayedIteratingSystem.prototype.isRunning = function () {
+            return this.running;
+        };
+        /**
+         * 停止系统运行，中止当前倒计时
+         */
+        DelayedIteratingSystem.prototype.stop = function () {
+            this.running = false;
+            this.acc = 0;
+        };
+        return DelayedIteratingSystem;
+    }(es.EntitySystem));
+    es.DelayedIteratingSystem = DelayedIteratingSystem;
 })(es || (es = {}));
 ///<reference path="./EntitySystem.ts" />
 var es;
@@ -3004,6 +3108,154 @@ var es;
         return EntityProcessingSystem;
     }(es.EntitySystem));
     es.EntityProcessingSystem = EntityProcessingSystem;
+})(es || (es = {}));
+var es;
+(function (es) {
+    /**
+     * 实体系统以一定的时间间隔进行处理
+     */
+    var IntervalSystem = /** @class */ (function (_super) {
+        __extends(IntervalSystem, _super);
+        function IntervalSystem(matcher, interval) {
+            var _this = _super.call(this, matcher) || this;
+            /**
+             * 累积增量以跟踪间隔
+             */
+            _this.acc = 0;
+            /**
+             * 更新之间需要等待多长时间
+             */
+            _this.interval = 0;
+            _this.intervalDelta = 0;
+            _this.interval = interval;
+            return _this;
+        }
+        IntervalSystem.prototype.checkProcessing = function () {
+            this.acc += es.Time.deltaTime;
+            if (this.acc >= this.interval) {
+                this.acc -= this.interval;
+                this.intervalDelta = (this.acc - this.intervalDelta);
+                return true;
+            }
+            return false;
+        };
+        /**
+         * 获取本系统上次处理后的实际delta值
+         */
+        IntervalSystem.prototype.getIntervalDelta = function () {
+            return this.interval + this.intervalDelta;
+        };
+        return IntervalSystem;
+    }(es.EntitySystem));
+    es.IntervalSystem = IntervalSystem;
+})(es || (es = {}));
+///<reference path="./IntervalSystem.ts"/>
+var es;
+///<reference path="./IntervalSystem.ts"/>
+(function (es) {
+    /**
+     * 每x个ticks处理一个实体的子集
+     *
+     * 典型的用法是每隔一定的时间间隔重新生成弹药或生命值
+     * 而无需在每个游戏循环中都进行
+     * 而是每100毫秒一次或每秒
+     */
+    var IntervalIteratingSystem = /** @class */ (function (_super) {
+        __extends(IntervalIteratingSystem, _super);
+        function IntervalIteratingSystem(matcher, interval) {
+            return _super.call(this, matcher, interval) || this;
+        }
+        IntervalIteratingSystem.prototype.process = function (entities) {
+            var _this = this;
+            entities.forEach(function (entity) { return _this.processEntity(entity); });
+        };
+        return IntervalIteratingSystem;
+    }(es.IntervalSystem));
+    es.IntervalIteratingSystem = IntervalIteratingSystem;
+})(es || (es = {}));
+var es;
+(function (es) {
+    /**
+     * JobSystem使用实体的子集调用Execute（entities），并在指定数量的线程上分配工作负载。
+     */
+    var JobSystem = /** @class */ (function (_super) {
+        __extends(JobSystem, _super);
+        function JobSystem(matcher, threads) {
+            var _this = _super.call(this, matcher) || this;
+            _this._threads = threads;
+            _this._jobs = new Array(threads);
+            for (var i = 0; i < _this._jobs.length; i++) {
+                _this._jobs[i] = new Job();
+            }
+            _this._executeStr = JSON.stringify(_this.execute, function (key, val) {
+                if (typeof val === 'function') {
+                    return val + '';
+                }
+                return val;
+            });
+            return _this;
+        }
+        JobSystem.prototype.process = function (entities) {
+            var _this = this;
+            var remainder = entities.length & this._threads;
+            var slice = entities.length / this._threads + (remainder == 0 ? 0 : 1);
+            var _loop_2 = function (t) {
+                var from = t * slice;
+                var to = from + slice;
+                if (to > entities.length) {
+                    to = entities.length;
+                }
+                var job = this_1._jobs[t];
+                job.set(entities, from, to, this_1._executeStr, this_1);
+                if (from != to) {
+                    var worker_1 = es.WorkerUtils.makeWorker(this_1.queueOnThread);
+                    var workerDo = es.WorkerUtils.workerMessage(worker_1);
+                    workerDo(job).then(function (message) {
+                        var job = message;
+                        _this.resetJob(job);
+                        worker_1.terminate();
+                    }).catch(function (err) {
+                        job.err = err;
+                        worker_1.terminate();
+                    });
+                }
+            };
+            var this_1 = this;
+            for (var t = 0; t < this._threads; t++) {
+                _loop_2(t);
+            }
+        };
+        JobSystem.prototype.queueOnThread = function () {
+            onmessage = function (_a) {
+                var _b = _a.data, jobId = _b.jobId, message = _b.message;
+                var job = message[0];
+                var executeFunc = JSON.parse(job.execute, function (k, v) {
+                    if (v.indexOf && v.indexOf('function') > -1) {
+                        return eval("(function(){return " + v + " })()");
+                    }
+                    return v;
+                });
+                for (var i = job.from; i < job.to; i++) {
+                    executeFunc.call(job.context, job.entities[i]);
+                }
+                postMessage({ jobId: jobId, result: message }, null);
+            };
+        };
+        return JobSystem;
+    }(es.EntitySystem));
+    es.JobSystem = JobSystem;
+    var Job = /** @class */ (function () {
+        function Job() {
+        }
+        Job.prototype.set = function (entities, from, to, execute, context) {
+            this.entities = entities;
+            this.from = from;
+            this.to = to;
+            this.execute = execute;
+            this.context = context;
+        };
+        return Job;
+    }());
 })(es || (es = {}));
 var es;
 (function (es) {
@@ -3161,6 +3413,363 @@ var es;
         return BitSet;
     }());
     es.BitSet = BitSet;
+})(es || (es = {}));
+var es;
+(function (es) {
+    /**
+     * 性能优化的位组实现。某些操作是以不安全为前缀的, 这些方法不执行验证，主要是在内部利用来优化实体ID位集的访问
+     */
+    var BitVector = /** @class */ (function () {
+        /**
+         * 创建一个初始大小足够大的bitset，以明确表示0到nbits-1范围内指数的bit
+         * @param nbits nbits 位集的初始大小
+         */
+        function BitVector(nbits) {
+            this.words = [0];
+            if (nbits) {
+                if (typeof nbits == 'number')
+                    this.checkCapacity(nbits >>> 6);
+                else {
+                    // 基于另一个位向量创建一个位集
+                    this.words = nbits.words.slice(0);
+                }
+            }
+        }
+        /**
+         *
+         * @param index 位的索引
+         * @returns 该位是否被设置
+         */
+        BitVector.prototype.get = function (index) {
+            var word = index >>> 6;
+            return word < this.words.length &&
+                (this.words[word] & (1 << index)) != 0;
+        };
+        /**
+         *
+         * @param index 位的索引
+         */
+        BitVector.prototype.set = function (index, value) {
+            if (value === void 0) { value = true; }
+            if (value) {
+                var word = index >>> 6;
+                this.checkCapacity(word);
+                this.words[word] |= 1 << index;
+            }
+            else {
+                this.clear(index);
+            }
+        };
+        /**
+         *
+         * @param index 位的索引
+         * @returns 该位是否被设置
+         */
+        BitVector.prototype.unsafeGet = function (index) {
+            return (this.words[index >>> 6] & (1 << index)) != 0;
+        };
+        /**
+         *
+         * @param index 要设置的位的索引
+         */
+        BitVector.prototype.unsafeSet = function (index) {
+            this.words[index >>> 6] |= 1 << index;
+        };
+        /**
+         *
+         * @param index 要翻转的位的索引
+         */
+        BitVector.prototype.flip = function (index) {
+            var word = index >>> 6;
+            this.checkCapacity(word);
+            this.words[word] ^= 1 << index;
+        };
+        /**
+         * 要清除的位的索引
+         * @param index
+         */
+        BitVector.prototype.clear = function (index) {
+            if (index != null) {
+                var word = index >>> 6;
+                if (word >= this.words.length)
+                    return;
+                this.words[word] &= ~(1 << index);
+            }
+            else {
+                this.words.fill(0);
+            }
+        };
+        /**
+         * 返回该位组的 "逻辑大小"：位组中最高设置位的索引加1。如果比特集不包含集合位，则返回0
+         */
+        BitVector.prototype.length = function () {
+            var bits = this.words.slice(0);
+            for (var word = bits.length - 1; word >= 0; --word) {
+                var bitsAtWord = bits[word];
+                if (bitsAtWord != 0)
+                    return (word << 6) + 64 - this.numberOfLeadingZeros(bitsAtWord);
+            }
+            return 0;
+        };
+        /**
+         * @returns 如果这个位组中没有设置为true的位，则为true
+         */
+        BitVector.prototype.isEmpty = function () {
+            var bits = this.words.slice(0);
+            var length = bits.length;
+            for (var i = 0; i < length; i++) {
+                if (bits[i] != 0)
+                    return false;
+            }
+            return true;
+        };
+        /**
+         * 返回在指定的起始索引上或之后出现的第一个被设置为真的位的索引。
+         * 如果不存在这样的位，则返回-1
+         * @param fromIndex
+         */
+        BitVector.prototype.nextSetBit = function (fromIndex) {
+            var word = fromIndex >>> 6;
+            if (word >= this.words.length)
+                return -1;
+            var bitmap = this.words[word] >>> fromIndex;
+            if (bitmap != 0)
+                return fromIndex + this.numberOfTrailingZeros(bitmap);
+            for (var i = 1 + word; i < this.words.length; i++) {
+                bitmap = this.words[i];
+                if (bitmap != 0) {
+                    return i * 64 + this.numberOfTrailingZeros(bitmap);
+                }
+            }
+            return -1;
+        };
+        /**
+         * 返回在指定的起始索引上或之后发生的第一个被设置为false的位的索引
+         * @param fromIndex
+         */
+        BitVector.prototype.nextClearBit = function (fromIndex) {
+            var word = fromIndex >>> 6;
+            if (word >= this.words.length)
+                return Math.min(fromIndex, this.words.length << 6);
+            var bitmap = ~(this.words[word] >>> fromIndex);
+            if (bitmap != 0)
+                return fromIndex + this.numberOfTrailingZeros(bitmap);
+            for (var i = 1 + word; i < this.words.length; i++) {
+                bitmap = ~this.words[i];
+                if (bitmap != 0) {
+                    return i * 64 + this.numberOfTrailingZeros(bitmap);
+                }
+            }
+            return Math.min(fromIndex, this.words.length << 6);
+        };
+        /**
+         * 对这个目标位集和参数位集进行逻辑AND。
+         * 这个位集被修改，使它的每一个位都有值为真，如果且仅当它最初的值为真，并且位集参数中的相应位也有值为真
+         * @param other
+         */
+        BitVector.prototype.and = function (other) {
+            var commonWords = Math.min(this.words.length, other.words.length);
+            for (var i = 0; commonWords > i; i++) {
+                this.words[i] &= other.words[i];
+            }
+            if (this.words.length > commonWords) {
+                for (var i = commonWords, s = this.words.length; s > i; i++) {
+                    this.words[i] = 0;
+                }
+            }
+        };
+        /**
+         * 清除该位集的所有位，其对应的位被设置在指定的位集中
+         * @param other
+         */
+        BitVector.prototype.andNot = function (other) {
+            var commonWords = Math.min(this.words.length, other.words.length);
+            for (var i = 0; commonWords > i; i++)
+                this.words[i] &= ~other.words[i];
+        };
+        /**
+         * 用位集参数执行这个位集的逻辑OR。
+         * 如果且仅当位集参数中的位已经有值为真或位集参数中的对应位有值为真时，该位集才会被修改，从而使位集中的位有值为真
+         * @param other
+         */
+        BitVector.prototype.or = function (other) {
+            var commonWords = Math.min(this.words.length, other.words.length);
+            for (var i = 0; commonWords > i; i++)
+                this.words[i] |= other.words[i];
+            if (commonWords < other.words.length) {
+                this.checkCapacity(other.words.length);
+                for (var i = commonWords, s = other.words.length; s > i; i++) {
+                    this.words[i] = other.words[i];
+                }
+            }
+        };
+        /**
+         * 用位集参数对这个位集进行逻辑XOR。
+         * 这个位集被修改了，所以如果且仅当以下语句之一成立时，位集中的一个位的值为真
+         * @param other
+         */
+        BitVector.prototype.xor = function (other) {
+            var commonWords = Math.min(this.words.length, other.words.length);
+            for (var i = 0; commonWords > i; i++)
+                this.words[i] ^= other.words[i];
+            if (commonWords < other.words.length) {
+                this.checkCapacity(other.words.length);
+                for (var i = commonWords, s = other.words.length; s > i; i++) {
+                    this.words[i] = other.words[i];
+                }
+            }
+        };
+        /**
+         * 如果指定的BitVector有任何位被设置为true，并且在这个BitVector中也被设置为true，则返回true
+         * @param other
+         */
+        BitVector.prototype.intersects = function (other) {
+            var bits = this.words.slice(0);
+            var otherBits = other.words;
+            for (var i = 0, s = Math.min(bits.length, otherBits.length); s > i; i++) {
+                if ((bits[i] & otherBits[i]) != 0)
+                    return true;
+            }
+            return false;
+        };
+        /**
+         * 如果这个位集是指定位集的超级集，即它的所有位都被设置为真，那么返回true
+         * @param other
+         */
+        BitVector.prototype.containsAll = function (other) {
+            var bits = this.words.slice(0);
+            var otherBits = other.words;
+            var otherBitsLength = otherBits.length;
+            var bitsLength = bits.length;
+            for (var i = bitsLength; i < otherBitsLength; i++) {
+                if (otherBits[i] != 0) {
+                    return false;
+                }
+            }
+            for (var i = 0, s = Math.min(bitsLength, otherBitsLength); s > i; i++) {
+                if ((bits[i] & otherBits[i]) != otherBits[i]) {
+                    return false;
+                }
+            }
+            return true;
+        };
+        BitVector.prototype.cardinality = function () {
+            var count = 0;
+            for (var i = 0; i < this.words.length; i++)
+                count += this.bitCount(this.words[i]);
+            return count;
+        };
+        BitVector.prototype.hashCode = function () {
+            var word = this.length() >>> 6;
+            var hash = 0;
+            for (var i = 0; word >= i; i++)
+                hash = 127 * hash + (this.words[i] ^ (this.words[i] >>> 32));
+            return hash;
+        };
+        BitVector.prototype.bitCount = function (i) {
+            i = i - ((i >>> 1) & 0x55555555);
+            i = (i & 0x33333333) + ((i >>> 2) & 0x33333333);
+            i = (i + (i >>> 4)) & 0x0f0f0f0f;
+            i = i + (i >>> 8);
+            i = i + (i >>> 16);
+            return i & 0x3f;
+        };
+        /**
+         * 返回二进制补码二进制表示形式中最高位（“最左端”）一位之前的零位数量
+         * @param i
+         */
+        BitVector.prototype.numberOfLeadingZeros = function (i) {
+            if (i == 0)
+                return 64;
+            var n = 1;
+            var x = i >>> 32;
+            if (x == 0) {
+                n += 32;
+                x = i;
+            }
+            if (x >>> 16 == 0) {
+                n += 16;
+                x <<= 16;
+            }
+            if (x >>> 24 == 0) {
+                n += 8;
+                x <<= 8;
+            }
+            if (x >>> 28 == 0) {
+                n += 4;
+                x <<= 4;
+            }
+            if (x >>> 30 == 0) {
+                n += 2;
+                x <<= 2;
+            }
+            n -= x >>> 31;
+            return n;
+        };
+        /**
+         * 返回指定二进制数的补码二进制表示形式中最低序（“最右”）一位之后的零位数量
+         * @param i
+         */
+        BitVector.prototype.numberOfTrailingZeros = function (i) {
+            var x = 0, y = 0;
+            if (i == 0)
+                return 64;
+            var n = 63;
+            y = i;
+            if (y != 0) {
+                n = n - 32;
+                x = y;
+            }
+            else
+                x = (i >>> 32);
+            y = x << 16;
+            if (y != 0) {
+                n = n - 16;
+                x = y;
+            }
+            y = x << 8;
+            if (y != 0) {
+                n = n - 8;
+                x = y;
+            }
+            y = x << 4;
+            if (y != 0) {
+                n = n - 4;
+                x = y;
+            }
+            y = x << 2;
+            if (y != 0) {
+                n = n - 2;
+                x = y;
+            }
+            return n - ((x << 1) >>> 31);
+        };
+        /**
+         *
+         * @param index 要清除的位的索引
+         */
+        BitVector.prototype.unsafeClear = function (index) {
+            this.words[index >>> 6] &= ~(1 << index);
+        };
+        /**
+         * 增长支持数组，使其能够容纳所请求的位
+         * @param bits 位数
+         */
+        BitVector.prototype.ensureCapacity = function (bits) {
+            this.checkCapacity(bits >>> 6);
+        };
+        BitVector.prototype.checkCapacity = function (len) {
+            if (len >= this.words.length) {
+                var newBits = new Array(len + 1);
+                for (var i = 0; i < this.words.length; i++) {
+                    newBits[i] = this.words[i];
+                }
+                this.words = newBits;
+            }
+        };
+        return BitVector;
+    }());
+    es.BitVector = BitVector;
 })(es || (es = {}));
 ///<reference path="../Components/IUpdatable.ts" />
 var es;
@@ -3553,23 +4162,19 @@ var es;
         EntityList.prototype.getTagList = function (tag) {
             var list = this._entityDict.get(tag);
             if (!list) {
-                list = [];
+                list = new Set();
                 this._entityDict.set(tag, list);
             }
             return list;
         };
         EntityList.prototype.addToTagList = function (entity) {
-            var list = this.getTagList(entity.tag);
-            if (list.findIndex(function (e) { return e.id == entity.id; }) == -1) {
-                list.push(entity);
-                this._unsortedTags.add(entity.tag);
-            }
+            this.getTagList(entity.tag).add(entity);
+            this._unsortedTags.add(entity.tag);
         };
         EntityList.prototype.removeFromTagList = function (entity) {
             var list = this._entityDict.get(entity.tag);
-            if (list) {
-                new linq.List(list).remove(entity);
-            }
+            if (list)
+                list.delete(entity);
         };
         EntityList.prototype.update = function () {
             var e_11, _a;
@@ -3619,11 +4224,6 @@ var es;
                 this._entities.sort(es.Entity.entityComparer.compare);
                 this._isEntityListUnsorted = false;
             }
-            // 根据需要对标签列表进行排序
-            if (this._unsortedTags.size > 0) {
-                this._unsortedTags.forEach(function (value) { return _this._entityDict.get(value).sort(function (a, b) { return a.compareTo(b); }); });
-                this._unsortedTags.clear();
-            }
         };
         /**
          * 返回第一个找到的名字为name的实体。如果没有找到则返回null
@@ -3647,11 +4247,23 @@ var es;
          * @param tag
          */
         EntityList.prototype.entitiesWithTag = function (tag) {
+            var e_12, _a;
             var list = this.getTagList(tag);
             var returnList = es.ListPool.obtain();
             returnList.length = this._entities.length;
-            for (var i = 0; i < list.length; i++)
-                returnList.push(list[i]);
+            try {
+                for (var list_1 = __values(list), list_1_1 = list_1.next(); !list_1_1.done; list_1_1 = list_1.next()) {
+                    var entity = list_1_1.value;
+                    returnList.push(entity);
+                }
+            }
+            catch (e_12_1) { e_12 = { error: e_12_1 }; }
+            finally {
+                try {
+                    if (list_1_1 && !list_1_1.done && (_a = list_1.return)) _a.call(list_1);
+                }
+                finally { if (e_12) throw e_12.error; }
+            }
             return returnList;
         };
         /**
@@ -4421,6 +5033,50 @@ var TimeUtils = /** @class */ (function () {
     };
     return TimeUtils;
 }());
+var es;
+(function (es) {
+    /**
+     * 开辟一个新线程
+     * 注意：它无法获得主线程中的上下文
+     */
+    var WorkerUtils = /** @class */ (function () {
+        function WorkerUtils() {
+        }
+        /**
+         * 创建一个worker
+         * @param doFunc worker所能做的事情
+         */
+        WorkerUtils.makeWorker = function (doFunc) {
+            var worker = new Worker(URL.createObjectURL(new Blob(["(" + doFunc.toString() + ")()"])));
+            return worker;
+        };
+        WorkerUtils.workerMessage = function (worker) {
+            var _this = this;
+            worker.onmessage = function (_a) {
+                var _b = _a.data, result = _b.result, jobId = _b.jobId;
+                if (typeof _this.pendingJobs[jobId] == 'function')
+                    _this.pendingJobs[jobId](result);
+                delete _this.pendingJobs[jobId];
+            };
+            return function () {
+                var message = [];
+                for (var _i = 0; _i < arguments.length; _i++) {
+                    message[_i] = arguments[_i];
+                }
+                return new Promise(function (resolve) {
+                    var jobId = _this.jobIdGen++;
+                    _this.pendingJobs[jobId] = resolve;
+                    worker.postMessage({ jobId: jobId, message: message });
+                });
+            };
+        };
+        /** 正在执行的队列 */
+        WorkerUtils.pendingJobs = {};
+        WorkerUtils.jobIdGen = 0;
+        return WorkerUtils;
+    }());
+    es.WorkerUtils = WorkerUtils;
+})(es || (es = {}));
 var es;
 (function (es) {
     /**
@@ -6574,7 +7230,7 @@ var es;
          * @param layerMask
          */
         SpatialHash.prototype.overlapRectangle = function (rect, results, layerMask) {
-            var e_12, _a;
+            var e_13, _a;
             this._overlapTestBox.updateBox(rect.width, rect.height);
             this._overlapTestBox.position = rect.location;
             var resultCounter = 0;
@@ -6605,12 +7261,12 @@ var es;
                         return resultCounter;
                 }
             }
-            catch (e_12_1) { e_12 = { error: e_12_1 }; }
+            catch (e_13_1) { e_13 = { error: e_13_1 }; }
             finally {
                 try {
                     if (potentials_1_1 && !potentials_1_1.done && (_a = potentials_1.return)) _a.call(potentials_1);
                 }
-                finally { if (e_12) throw e_12.error; }
+                finally { if (e_13) throw e_13.error; }
             }
             return resultCounter;
         };
@@ -6622,7 +7278,7 @@ var es;
          * @param layerMask
          */
         SpatialHash.prototype.overlapCircle = function (circleCenter, radius, results, layerMask) {
-            var e_13, _a;
+            var e_14, _a;
             var bounds = new es.Rectangle(circleCenter.x - radius, circleCenter.y - radius, radius * 2, radius * 2);
             this._overlapTestCircle.radius = radius;
             this._overlapTestCircle.position = circleCenter;
@@ -6655,12 +7311,12 @@ var es;
                         return resultCounter;
                 }
             }
-            catch (e_13_1) { e_13 = { error: e_13_1 }; }
+            catch (e_14_1) { e_14 = { error: e_14_1 }; }
             finally {
                 try {
                     if (potentials_2_1 && !potentials_2_1.done && (_a = potentials_2.return)) _a.call(potentials_2);
                 }
-                finally { if (e_13) throw e_13.error; }
+                finally { if (e_14) throw e_14.error; }
             }
             return resultCounter;
         };
@@ -8495,7 +9151,7 @@ var es;
          * 重置标记记录
          */
         TimeRuler.prototype.resetLog = function () {
-            var e_14, _a;
+            var e_15, _a;
             if (!es.Core.Instance.debug)
                 return;
             try {
@@ -8513,12 +9169,12 @@ var es;
                     }
                 }
             }
-            catch (e_14_1) { e_14 = { error: e_14_1 }; }
+            catch (e_15_1) { e_15 = { error: e_15_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_14) throw e_14.error; }
+                finally { if (e_15) throw e_15.error; }
             }
         };
         /**
@@ -11108,7 +11764,7 @@ var linq;
          * 创建一个Set从一个Enumerable.List< T>。
          */
         List.prototype.toSet = function () {
-            var e_15, _a;
+            var e_16, _a;
             var result = new Set();
             try {
                 for (var _b = __values(this._elements), _c = _b.next(); !_c.done; _c = _b.next()) {
@@ -11116,12 +11772,12 @@ var linq;
                     result.add(x);
                 }
             }
-            catch (e_15_1) { e_15 = { error: e_15_1 }; }
+            catch (e_16_1) { e_16 = { error: e_16_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_15) throw e_15.error; }
+                finally { if (e_16) throw e_16.error; }
             }
             return result;
         };
@@ -11370,7 +12026,7 @@ var es;
          * 计算可见性多边形，并返回三角形扇形的顶点（减去中心顶点）。返回的数组来自ListPool
          */
         VisibilityComputer.prototype.end = function () {
-            var e_16, _a;
+            var e_17, _a;
             var output = es.ListPool.obtain();
             this.updateSegments();
             this._endPoints.sort(this._radialComparer.compare);
@@ -11409,12 +12065,12 @@ var es;
                         }
                     }
                 }
-                catch (e_16_1) { e_16 = { error: e_16_1 }; }
+                catch (e_17_1) { e_17 = { error: e_17_1 }; }
                 finally {
                     try {
                         if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                     }
-                    finally { if (e_16) throw e_16.error; }
+                    finally { if (e_17) throw e_17.error; }
                 }
             }
             VisibilityComputer._openSegments.clear();
@@ -11530,7 +12186,7 @@ var es;
          * 处理片段，以便我们稍后对它们进行分类
          */
         VisibilityComputer.prototype.updateSegments = function () {
-            var e_17, _a;
+            var e_18, _a;
             try {
                 for (var _b = __values(this._segments), _c = _b.next(); !_c.done; _c = _b.next()) {
                     var segment = _c.value;
@@ -11548,12 +12204,12 @@ var es;
                     segment.p2.begin = !segment.p1.begin;
                 }
             }
-            catch (e_17_1) { e_17 = { error: e_17_1 }; }
+            catch (e_18_1) { e_18 = { error: e_18_1 }; }
             finally {
                 try {
                     if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
                 }
-                finally { if (e_17) throw e_17.error; }
+                finally { if (e_18) throw e_18.error; }
             }
             // 如果我们有一个聚光灯，我们需要存储前两个段的角度。
             // 这些是光斑的边界，我们将用它们来过滤它们之外的任何顶点。
