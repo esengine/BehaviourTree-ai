@@ -1,6 +1,22 @@
 # BehaviourTree、UtilityAI、FSM
 基于ecs-framework开发的AI（BehaviourTree、UtilityAI、FSM）系统，一套已经非常完整的系统。大家可以自行看源代码来学习，项目当中也有好几个示例，如果对项目你有更多的解决方案可发起 `pull request`请求或者有任何疑问可发起`issue`。
 
+## 目录结构
+
+- src `源目录`
+  - behaviourTree   `行为树主目录`
+    - actions `动作是行为树的节点。比如： 播放动画，触发事件等。`
+    - composites `Composites是行为树中的父节点，他们容纳一个或多个子节点，并以不同的方式执行。`
+    - conditionals `它们由IConditional接口标识。它们会检查游戏世界的某些情况，并返回成功或失败`
+    - decorators `装饰器可以通过各种方式修改子任务的行为，例如： 反转结果，运行知道失败等`
+  - utilityAI `实用AI主目录`
+    - actions `AI执行的操作`
+    - considerations `列出评估和行为清单。计算一个分数，用数字表示Action的有效使用情况。`
+    - reasoners `从附加的Reasoner的事项列表中选择最佳的事项。AI的根源`
+  - core    `egret核心扩展`
+  - test    `示例工程`
+    - utilityActions `实用AI示例目录`
+
 ## 介绍
 
 ### State Machine
@@ -26,22 +42,6 @@
 ```
 
 ### Behavior Trees
-  
-#### 目录结构
-
-- src `源目录`
-  - behaviourTree   `行为树主目录`
-    - actions `动作是行为树的节点。比如： 播放动画，触发事件等。`
-    - composites `Composites是行为树中的父节点，他们容纳一个或多个子节点，并以不同的方式执行。`
-    - conditionals `它们由IConditional接口标识。它们会检查游戏世界的某些情况，并返回成功或失败`
-    - decorators `装饰器可以通过各种方式修改子任务的行为，例如： 反转结果，运行知道失败等`
-  - utilityAI `实用AI主目录`
-    - actions `AI执行的操作`
-    - considerations `列出评估和行为清单。计算一个分数，用数字表示Action的有效使用情况。`
-    - reasoners `从附加的Reasoner的事项列表中选择最佳的事项。AI的根源`
-  - core    `egret核心扩展`
-  - test    `示例工程`
-    - utilityActions `实用AI示例目录`
 
 行为树由节点树组成。节点可以根据世界状态做出决策并执行操作。它包含一个BehaviorTreeBuilder类，它提供了一个用于设置行为树的API。BehaviorTreeBuilder是一种使行为树减少使用并快速启动的方法。
 
@@ -81,11 +81,7 @@
 - LogAction<T>：将字符串记录到控制台用于调试。
 - BehaviorTreeReference<T>:运行另一个行为树
 
-## 游戏实例
-
-![](sceenshot/sample.png)
-
-## 使用文档
+### 使用文档
 
 ```typescript
 class AiComponent{
