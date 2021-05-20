@@ -81,10 +81,6 @@
 - LogAction<T>：将字符串记录到控制台用于调试。
 - BehaviorTreeReference<T>:运行另一个行为树
 
-### 关于 `实用AI`
-
-> 最复杂的AI解决方案。最适合在动态环境中使用，基于效用的AI可以采取大量潜在竞争行为的情况。
-
 ## 游戏实例
 
 ![](sceenshot/sample.png)
