@@ -1,3 +1,5 @@
-interface IAppraisal<T>{
-    getScore(context: T): number;
+module utilityAI {
+    export interface IAppraisal<T>{
+        getScore(context: T): number;
+    }
 }

@@ -7,10 +7,7 @@ declare module es {
          * 核心发射器。只发出核心级别的事件
          */
         static emitter: Emitter<CoreEvents>;
-        /**
-         * 启用/禁用焦点丢失时的暂停。如果为真，则不调用更新或渲染方法
-         */
-        static pauseOnFocusLost: boolean;
+        static paused: boolean;
         /**
          * 是否启用调试渲染
          */
@@ -76,7 +73,7 @@ declare module es {
          * 获取类型为T的全局管理器
          * @param type
          */
-        static getGlobalManager<T extends es.GlobalManager>(type: any): T;
+        static getGlobalManager<T extends es.GlobalManager>(type: new (...args: any[]) => T): T;
         /**
          * 启动一个coroutine。Coroutine可以将number延时几秒或延时到其他startCoroutine.Yielding
          * null将使coroutine在下一帧被执行。
@@ -91,8 +88,6 @@ declare module es {
          * @param onTime
          */
         static schedule(timeInSeconds: number, repeats: boolean, context: any, onTime: (timer: ITimer) => void): Timer;
-        startDebugUpdate(): void;
-        endDebugUpdate(): void;
         startDebugDraw(): void;
         /**
          * 在一个场景结束后，下一个场景开始之前调用
@@ -155,10 +150,16 @@ declare module es {
      *      - onRemovedFromEntity
      */
     abstract class Component {
+        static _idGenerator: number;
+        /**
+         * 此组件的唯一标识
+         */
+        readonly id: number;
         /**
          * 此组件附加的实体
          */
         entity: Entity;
+        constructor();
         /**
          * 快速访问 this.entity.transform
          */
@@ -206,6 +207,17 @@ declare module es {
     }
 }
 declare module es {
+    class ComponentType {
+        static INDEX: number;
+        private index_;
+        private type_;
+        constructor(type: Class, index?: number);
+        getName(): string;
+        getIndex(): number;
+        toString(): string;
+    }
+}
+declare module es {
     enum CoreEvents {
         /**
          * 当场景发生变化时触发
@@ -222,7 +234,6 @@ declare module es {
         compare(self: Entity, other: Entity): number;
     }
     class Entity implements IEqualityComparable {
-        static _idGenerator: number;
         static entityComparer: IComparer<Entity>;
         /**
          * 当前实体所属的场景
@@ -248,11 +259,8 @@ declare module es {
          * 指定应该调用这个entity update方法的频率。1表示每一帧，2表示每一帧，以此类推
          */
         updateInterval: number;
-        /**
-         * 返回一个BitSet实例，包含实体拥有的组件的位
-         */
-        componentBits: BitSet;
-        constructor(name: string);
+        componentBits: Bits;
+        constructor(name: string, id: number);
         _isDestroyed: boolean;
         /**
          * 如果调用了destroy，那么在下一次处理实体之前这将一直为true
@@ -355,7 +363,7 @@ declare module es {
          * 创建组件的新实例。返回实例组件
          * @param componentType
          */
-        createComponent<T extends Component>(componentType: new () => T): T;
+        createComponent<T extends Component>(componentType: new (...args: any[]) => T): T;
         /**
          * 将组件添加到组件列表中。返回组件。
          * @param component
@@ -365,23 +373,36 @@ declare module es {
          * 获取类型T的第一个组件并返回它。如果没有找到组件，则返回null。
          * @param type
          */
-        getComponent<T extends Component>(type: any): T;
+        getComponent<T extends Component>(type: new (...args: any[]) => T): T;
+        /**
+         *  获取类型T的第一个并已加入场景的组件并返回它。如果没有找到组件，则返回null。
+         * @param type
+         * @returns
+         */
+        getComponentInScene<T extends Component>(type: new (...args: any[]) => T): T;
+        /**
+         * 尝试获取T类型的组件。如果未找到任何组件，则返回false
+         * @param type
+         * @param outComponent
+         * @returns
+         */
+        tryGetComponent<T extends Component>(type: new (...args: any[]) => T, outComponent: Ref<T>): boolean;
         /**
          * 检查实体是否具有该组件
          * @param type
          */
-        hasComponent<T extends Component>(type: any): boolean;
+        hasComponent<T extends Component>(type: new (...args: any[]) => T): boolean;
         /**
          * 获取类型T的第一个组件并返回它。如果没有找到组件，将创建组件。
          * @param type
          */
-        getOrCreateComponent<T extends Component>(type: any): T;
+        getOrCreateComponent<T extends Component>(type: new (...args: any[]) => T): T;
         /**
          * 获取typeName类型的所有组件，但不使用列表分配
          * @param typeName
          * @param componentList
          */
-        getComponents(typeName: any, componentList?: any): any;
+        getComponents(typeName: any, componentList?: any): any[];
         /**
          * 从组件列表中删除组件
          * @param component
@@ -439,6 +460,13 @@ declare module es {
          *
          * @param value1
          * @param value2
+         * @returns
+         */
+        static multiplyScaler(value1: Vector2, value2: number): Vector2;
+        /**
+         *
+         * @param value1
+         * @param value2
          */
         static subtract(value1: Vector2, value2: Vector2): Vector2;
         /**
@@ -475,11 +503,25 @@ declare module es {
          */
         static lerp(value1: Vector2, value2: Vector2, amount: number): Vector2;
         /**
+         * 创建一个新的Vector2，其中包含指定矢量的线性插值
+         * @param value1
+         * @param value2
+         * @param amount
+         * @returns
+         */
+        static lerpPrecise(value1: Vector2, value2: Vector2, amount: number): Vector2;
+        /**
          * 创建一个新的Vector2，该Vector2包含了通过指定的Matrix进行的二维向量变换。
          * @param position
          * @param matrix
          */
         static transform(position: Vector2, matrix: Matrix2D): Vector2;
+        /**
+         * 创建一个新的Vector2，其中包含由指定的Matrix转换的指定法线
+         * @param normal
+         * @param matrix
+         */
+        static transformNormal(normal: Vector2, matrix: Matrix): Vector2;
         /**
          * 返回两个向量之间的距离
          * @param value1
@@ -500,6 +542,21 @@ declare module es {
          */
         static negate(value: Vector2): Vector2;
         /**
+         * 创建一个新的Vector2，其中包含给定矢量和法线的反射矢量
+         * @param vector
+         * @param normal
+         * @returns
+         */
+        static reflect(vector: Vector2, normal: Vector2): Vector2;
+        /**
+         * 创建一个新的Vector2，其中包含指定矢量的三次插值
+         * @param value1
+         * @param value2
+         * @param amount
+         * @returns
+         */
+        static smoothStep(value1: Vector2, value2: Vector2, amount: number): Vector2;
+        /**
          *
          * @param value
          */
@@ -514,6 +571,12 @@ declare module es {
          * @param value
          */
         multiply(value: Vector2): Vector2;
+        /**
+         *
+         * @param value
+         * @returns
+         */
+        multiplyScaler(value: number): Vector2;
         /**
          * 从当前Vector2减去一个Vector2
          * @param value 要减去的Vector2
@@ -547,20 +610,35 @@ declare module es {
          * @returns 如果实例相同true 否则false
          */
         equals(other: Vector2 | object): boolean;
+        isValid(): boolean;
+        /**
+         * 创建一个新的Vector2，其中包含来自两个向量的最小值
+         * @param value1
+         * @param value2
+         * @returns
+         */
+        static min(value1: Vector2, value2: Vector2): Vector2;
+        /**
+         * 创建一个新的Vector2，其中包含两个向量的最大值
+         * @param value1
+         * @param value2
+         * @returns
+         */
+        static max(value1: Vector2, value2: Vector2): Vector2;
+        /**
+         * 创建一个新的Vector2，其中包含Hermite样条插值
+         * @param value1
+         * @param tangent1
+         * @param value2
+         * @param tangent2
+         * @param amount
+         * @returns
+         */
+        static hermite(value1: Vector2, tangent1: Vector2, value2: Vector2, tangent2: Vector2, amount: number): Vector2;
         clone(): Vector2;
     }
 }
 declare module es {
-    enum SceneResolutionPolicy {
-        /**
-         * 默认情况下，RenderTarget与屏幕大小匹配。RenderTarget与屏幕大小相匹配
-         */
-        none = 0,
-        /**
-         * 该应用程序采用最适合设计分辨率的宽度和高度
-         */
-        bestFit = 1
-    }
     /** 场景 */
     class Scene {
         /**
@@ -572,6 +650,7 @@ declare module es {
          */
         readonly entityProcessors: EntityProcessorList;
         readonly _sceneComponents: SceneComponent[];
+        readonly identifierPool: IdentifierPool;
         private _didSceneBegin;
         constructor();
         /**
@@ -630,26 +709,34 @@ declare module es {
          * @param name
          */
         findEntity(name: string): Entity;
+        findEntityById(id: number): Entity;
         /**
          * 返回具有给定标记的所有实体
          * @param tag
          */
         findEntitiesWithTag(tag: number): Entity[];
         /**
-         * 返回类型为T的所有实体
-         * @param type
+         * 返回提一个具有该标记的实体
+         * @param tag
+         * @returns
          */
-        entitiesOfType<T extends Entity>(type: any): T[];
+        findEntityWithTag(tag: number): Entity;
         /**
          * 返回第一个启用加载的类型为T的组件
          * @param type
          */
-        findComponentOfType<T extends Component>(type: any): T;
+        findComponentOfType<T extends Component>(type: new (...args: any[]) => T): T;
         /**
          * 返回类型为T的所有已启用已加载组件的列表
          * @param type
          */
-        findComponentsOfType<T extends Component>(type: any): T[];
+        findComponentsOfType<T extends Component>(type: new (...args: any[]) => T): T[];
+        /**
+         * 返回场景中包含特定组件的实体列表
+         * @param type
+         * @returns
+         */
+        findEntitiesOfComponent(...types: any[]): Entity[];
         /**
          * 在场景中添加一个EntitySystem处理器
          * @param processor 处理器
@@ -663,7 +750,7 @@ declare module es {
         /**
          * 获取EntitySystem处理器
          */
-        getEntityProcessor<T extends EntitySystem>(): T;
+        getEntityProcessor<T extends EntitySystem>(type: new (...args: any[]) => T): T;
     }
 }
 declare module transform {
@@ -1089,7 +1176,7 @@ declare module es {
     }
 }
 declare module es {
-    abstract class Collider extends Component {
+    class Collider extends Component {
         /**
          * 对撞机的基本形状
          */
@@ -1190,6 +1277,18 @@ declare module es {
          * @param result
          */
         collidesWithNonMotion(collider: Collider, result?: CollisionResult): boolean;
+        /**
+         * 检查此碰撞器是否已应用运动（增量运动矢量）与任何碰撞器发生碰撞。
+         * 如果是这样，则将返回true，并且将使用碰撞数据填充结果。 运动将设置为碰撞器在碰撞之前可以行进的最大距离。
+         * @param motion
+         * @param result
+         */
+        collidesWithAny(motion: Vector2, result: CollisionResult): boolean;
+        /**
+         * 检查此碰撞器是否与场景中的其他碰撞器碰撞。它相交的第一个碰撞器将在碰撞结果中返回碰撞数据。
+         * @param result
+         */
+        collidesWithAnyNonMotion(result?: CollisionResult): boolean;
     }
 }
 declare module es {
@@ -1255,6 +1354,38 @@ declare module es {
     }
 }
 declare module es {
+    interface Map<K, V> {
+        clear(): void;
+        containsKey(key: any): boolean;
+        containsValue(value: any): boolean;
+        get(key: any): V;
+        isEmpty(): boolean;
+        put(key: any, value: any): void;
+        remove(key: any): V;
+        size(): number;
+        values(): V[];
+    }
+    class HashMap<K, V> implements Map<K, V> {
+        private map_;
+        private keys_;
+        constructor();
+        clear(): void;
+        values(): V[];
+        contains(value: any): boolean;
+        containsKey(key: any): boolean;
+        containsValue(value: any): boolean;
+        get(key: K): V;
+        isEmpty(): boolean;
+        keys(): K[];
+        /**
+         * if key is a string, use as is, else use key.id_ or key.name
+         */
+        put(key: any, value: any): void;
+        remove(key: any): V;
+        size(): number;
+    }
+}
+declare module es {
     /**
      * 追踪实体的子集，但不实现任何排序或迭代。
      */
@@ -1268,6 +1399,11 @@ declare module es {
         scene: Scene;
         private _matcher;
         readonly matcher: Matcher;
+        private _startTime;
+        private _endTime;
+        private _useTime;
+        /** 获取系统在当前帧所消耗的时间 仅在debug模式下生效 */
+        readonly useTime: number;
         initialize(): void;
         onChanged(entity: Entity): void;
         add(entity: Entity): void;
@@ -1482,146 +1618,10 @@ declare module es {
     }
 }
 declare module es {
-    /**
-     * 这个类可以从两方面来考虑。你可以把它看成一个位向量或者一组非负整数。这个名字有点误导人。
-     *
-     * 它是由一个位向量实现的，但同样可以把它看成是一个非负整数的集合;集合中的每个整数由对应索引处的集合位表示。该结构的大小由集合中的最大整数决定。
-     */
-    class BitSet {
-        private static LONG_MASK;
-        private _bits;
-        constructor(nbits?: number);
-        and(bs: BitSet): void;
-        andNot(bs: BitSet): void;
-        cardinality(): number;
-        clear(pos?: number): void;
-        get(pos: number): boolean;
-        intersects(set: BitSet): boolean;
-        isEmpty(): boolean;
-        nextSetBit(from: number): number;
-        set(pos: number, value?: boolean): void;
-        private ensure;
-    }
-}
-declare module es {
-    /**
-     * 性能优化的位组实现。某些操作是以不安全为前缀的, 这些方法不执行验证，主要是在内部利用来优化实体ID位集的访问
-     */
-    class BitVector {
-        private words;
-        /**
-         * 创建一个初始大小足够大的bitset，以明确表示0到nbits-1范围内指数的bit
-         * @param nbits nbits 位集的初始大小
-         */
-        constructor(nbits?: number | BitVector);
-        /**
-         *
-         * @param index 位的索引
-         * @returns 该位是否被设置
-         */
-        get(index: number): boolean;
-        /**
-         *
-         * @param index 位的索引
-         */
-        set(index: number, value?: boolean): void;
-        /**
-         *
-         * @param index 位的索引
-         * @returns 该位是否被设置
-         */
-        unsafeGet(index: number): boolean;
-        /**
-         *
-         * @param index 要设置的位的索引
-         */
-        unsafeSet(index: number): void;
-        /**
-         *
-         * @param index 要翻转的位的索引
-         */
-        flip(index: number): void;
-        /**
-         * 要清除的位的索引
-         * @param index
-         */
-        clear(index?: number): void;
-        /**
-         * 返回该位组的 "逻辑大小"：位组中最高设置位的索引加1。如果比特集不包含集合位，则返回0
-         */
-        length(): number;
-        /**
-         * @returns 如果这个位组中没有设置为true的位，则为true
-         */
-        isEmpty(): boolean;
-        /**
-         * 返回在指定的起始索引上或之后出现的第一个被设置为真的位的索引。
-         * 如果不存在这样的位，则返回-1
-         * @param fromIndex
-         */
-        nextSetBit(fromIndex: number): number;
-        /**
-         * 返回在指定的起始索引上或之后发生的第一个被设置为false的位的索引
-         * @param fromIndex
-         */
-        nextClearBit(fromIndex: number): number;
-        /**
-         * 对这个目标位集和参数位集进行逻辑AND。
-         * 这个位集被修改，使它的每一个位都有值为真，如果且仅当它最初的值为真，并且位集参数中的相应位也有值为真
-         * @param other
-         */
-        and(other: BitVector): void;
-        /**
-         * 清除该位集的所有位，其对应的位被设置在指定的位集中
-         * @param other
-         */
-        andNot(other: BitVector): void;
-        /**
-         * 用位集参数执行这个位集的逻辑OR。
-         * 如果且仅当位集参数中的位已经有值为真或位集参数中的对应位有值为真时，该位集才会被修改，从而使位集中的位有值为真
-         * @param other
-         */
-        or(other: BitVector): void;
-        /**
-         * 用位集参数对这个位集进行逻辑XOR。
-         * 这个位集被修改了，所以如果且仅当以下语句之一成立时，位集中的一个位的值为真
-         * @param other
-         */
-        xor(other: BitVector): void;
-        /**
-         * 如果指定的BitVector有任何位被设置为true，并且在这个BitVector中也被设置为true，则返回true
-         * @param other
-         */
-        intersects(other: BitVector): boolean;
-        /**
-         * 如果这个位集是指定位集的超级集，即它的所有位都被设置为真，那么返回true
-         * @param other
-         */
-        containsAll(other: BitVector): boolean;
-        cardinality(): number;
-        hashCode(): number;
-        private bitCount;
-        /**
-         * 返回二进制补码二进制表示形式中最高位（“最左端”）一位之前的零位数量
-         * @param i
-         */
-        private numberOfLeadingZeros;
-        /**
-         * 返回指定二进制数的补码二进制表示形式中最低序（“最右”）一位之后的零位数量
-         * @param i
-         */
-        numberOfTrailingZeros(i: number): number;
-        /**
-         *
-         * @param index 要清除的位的索引
-         */
-        unsafeClear(index: number): void;
-        /**
-         * 增长支持数组，使其能够容纳所请求的位
-         * @param bits 位数
-         */
-        ensureCapacity(bits: number): void;
-        private checkCapacity;
+    class Bits {
+        private _bit;
+        set(index: number, value: number): void;
+        get(index: number): number;
     }
 }
 declare module es {
@@ -1642,16 +1642,24 @@ declare module es {
         /**
          * 添加到此框架的组件列表。用来对组件进行分组，这样我们就可以同时进行加工
          */
-        _componentsToAdd: Component[];
+        _componentsToAdd: {
+            [index: number]: Component;
+        };
         /**
          * 标记要删除此框架的组件列表。用来对组件进行分组，这样我们就可以同时进行加工
          */
-        _componentsToRemove: Component[];
+        _componentsToRemove: {
+            [index: number]: Component;
+        };
+        _componentsToAddList: Component[];
+        _componentsToRemoveList: Component[];
         _tempBufferList: Component[];
         /**
          * 用于确定是否需要对该框架中的组件进行排序的标志
          */
         _isComponentListUnsorted: boolean;
+        private componentsByType;
+        private componentsToAddByType;
         constructor(entity: Entity);
         readonly count: number;
         readonly buffer: Component[];
@@ -1664,11 +1672,17 @@ declare module es {
         removeAllComponents(): void;
         deregisterAllComponents(): void;
         registerAllComponents(): void;
+        private decreaseBits;
+        private addBits;
         /**
          * 处理任何需要删除或添加的组件
          */
         updateLists(): void;
         handleRemove(component: Component): void;
+        private removeComponentsByType;
+        private addComponentsByType;
+        private removeComponentsToAddByType;
+        private addComponentsToAddByType;
         /**
          * 获取类型T的第一个组件并返回它
          * 可以选择跳过检查未初始化的组件(尚未调用onAddedToEntity方法的组件)
@@ -1682,11 +1696,21 @@ declare module es {
          * @param typeName
          * @param components
          */
-        getComponents(typeName: any, components?: any): any;
+        getComponents(typeName: any, components?: any[]): any[];
         update(): void;
         onEntityTransformChanged(comp: transform.Component): void;
         onEntityEnabled(): void;
         onEntityDisabled(): void;
+    }
+}
+declare module es {
+    class ComponentTypeFactory {
+        private componentTypes_;
+        private componentTypeCount_;
+        types: Bag<ComponentType>;
+        constructor();
+        getTypeFor(c: any): ComponentType;
+        getIndexFor(c: any): number;
     }
 }
 declare module es {
@@ -1706,11 +1730,17 @@ declare module es {
         /**
          * 本帧添加的实体列表。用于对实体进行分组，以便我们可以同时处理它们
          */
-        _entitiesToAdded: HashSet<Entity>;
+        _entitiesToAdded: {
+            [index: number]: Entity;
+        };
         /**
          * 本帧被标记为删除的实体列表。用于对实体进行分组，以便我们可以同时处理它们
          */
-        _entitiesToRemove: HashSet<Entity>;
+        _entitiesToRemove: {
+            [index: number]: Entity;
+        };
+        _entitiesToAddedList: Entity[];
+        _entitiesToRemoveList: Entity[];
         /**
          * 标志，用于确定我们是否需要在这一帧中对实体进行排序
          */
@@ -1755,17 +1785,23 @@ declare module es {
          */
         findEntity(name: string): Entity;
         /**
+         *
+         * @param id
+         * @returns
+         */
+        findEntityById(id: number): Entity;
+        /**
          * 返回带有标签的所有实体的列表。如果没有实体有标签，则返回一个空列表。
          * 返回的List可以通过ListPool.free放回池中
          * @param tag
          */
         entitiesWithTag(tag: number): Entity[];
         /**
-         * 返回一个T类型的所有实体的列表。
-         * 返回的List可以通过ListPool.free放回池中。
-         * @param type
+         * 返回第一个找到该tag的实体
+         * @param tag
+         * @returns
          */
-        entitiesOfType<T extends Entity>(type: any): T[];
+        entityWithTag(tag: number): Entity;
         /**
          * 返回在场景中找到的第一个T类型的组件。
          * @param type
@@ -1777,11 +1813,17 @@ declare module es {
          * @param type
          */
         findComponentsOfType<T extends Component>(type: any): T[];
+        /**
+         * 返回场景中包含特定组件的实体列表
+         * @param types
+         * @returns
+         */
+        findEntitesOfComponent(...types: any[]): Entity[];
     }
 }
 declare module es {
     class EntityProcessorList {
-        protected _processors: EntitySystem[];
+        _processors: EntitySystem[];
         add(processor: EntitySystem): void;
         remove(processor: EntitySystem): void;
         onComponentAdded(entity: Entity): void;
@@ -1792,7 +1834,7 @@ declare module es {
         update(): void;
         lateUpdate(): void;
         end(): void;
-        getProcessor<T extends EntitySystem>(): T;
+        getProcessor<T extends EntitySystem>(type: new (...args: any[]) => T): T;
         protected notifyEntityChanged(entity: Entity): void;
         protected removeFromProcessors(entity: Entity): void;
     }
@@ -1826,16 +1868,25 @@ declare module es {
     }
 }
 declare module es {
+    class IdentifierPool {
+        private ids;
+        private nextAvailableId_;
+        constructor();
+        checkOut(): number;
+        checkIn(id: number): void;
+    }
+}
+declare module es {
     class Matcher {
-        protected allSet: BitSet;
-        protected exclusionSet: BitSet;
-        protected oneSet: BitSet;
+        protected allSet: (new (...args: any[]) => Component)[];
+        protected exclusionSet: (new (...args: any[]) => Component)[];
+        protected oneSet: (new (...args: any[]) => Component)[];
         static empty(): Matcher;
-        getAllSet(): BitSet;
-        getExclusionSet(): BitSet;
-        getOneSet(): BitSet;
+        getAllSet(): (new (...args: any[]) => Component)[];
+        getExclusionSet(): (new (...args: any[]) => Component)[];
+        getOneSet(): (new (...args: any[]) => Component)[];
         isInterestedEntity(e: Entity): boolean;
-        isInterested(componentBits: BitSet): boolean;
+        isInterested(components: Bits): boolean;
         all(...types: any[]): Matcher;
         exclude(...types: any[]): this;
         one(...types: any[]): this;
@@ -1934,6 +1985,8 @@ declare module es {
         static deltaTime: number;
         /** 时间刻度缩放 */
         static timeScale: number;
+        /** DeltaTime可以为的最大值 */
+        static maxDeltaTime: number;
         /** 已传递的帧总数 */
         static frameCount: number;
         /** 自场景加载以来的总时间 */
@@ -2216,7 +2269,25 @@ declare module es {
          */
         static toRadians(degrees: number): number;
         /**
-         * mapps值(在leftMin - leftMax范围内)到rightMin - rightMax范围内的值
+         * 返回由给定三角形和两个归一化重心（面积）坐标定义的点的一个轴的笛卡尔坐标
+         * @param value1
+         * @param value2
+         * @param value3
+         * @param amount1
+         * @param amount2
+         */
+        static barycentric(value1: number, value2: number, value3: number, amount1: number, amount2: number): number;
+        /**
+         * 使用指定位置执行Catmull-Rom插值
+         * @param value1
+         * @param value2
+         * @param value3
+         * @param value4
+         * @param amount
+         */
+        static catmullRom(value1: number, value2: number, value3: number, value4: number, amount: number): number;
+        /**
+         * 将值（在leftMin-leftMax范围内）映射到一个在rightMin-rightMax范围内的值
          * @param value
          * @param leftMin
          * @param leftMax
@@ -2224,8 +2295,81 @@ declare module es {
          * @param rightMax
          */
         static map(value: number, leftMin: number, leftMax: number, rightMin: number, rightMax: number): number;
-        static lerp(value1: number, value2: number, amount: number): number;
+        /**
+         * 将值从任意范围映射到0到1范围
+         * @param value
+         * @param min
+         * @param max
+         * @returns
+         */
+        static map01(value: number, min: number, max: number): number;
+        /**
+         * 将值从某个任意范围映射到1到0范围
+         * 这相当于map01的取反
+         * @param value
+         * @param min
+         * @param max
+         * @returns
+         */
+        static map10(value: number, min: number, max: number): number;
+        /**
+         * 使用三次方程在两个值之间进行插值
+         * @param value1
+         * @param value2
+         * @param amount
+         */
+        static smoothStep(value1: number, value2: number, amount: number): number;
+        /**
+         * 将给定角度减小到π到-π之间的值
+         * @param angle
+         */
+        static wrapAngle(angle: number): number;
+        /**
+         * 确定值是否以2为底
+         * @param value
+         * @returns
+         */
+        static isPowerOfTwo(value: number): boolean;
+        static lerp(from: number, to: number, t: number): number;
+        /**
+         * 使度数的角度在a和b之间
+         * 用于处理360度环绕
+         * @param a
+         * @param b
+         * @param t
+         * @returns
+         */
+        static lerpAngle(a: number, b: number, t: number): number;
+        /**
+         * 使弧度的角度在a和b之间
+         * @param a
+         * @param b
+         * @param t
+         * @returns
+         */
+        static lerpAngleRadians(a: number, b: number, t: number): number;
+        /**
+         * 循环t使其不大于长度且不小于0
+         * @param t
+         * @param length
+         * @returns
+         */
+        static pingPong(t: number, length: number): number;
+        /**
+         * 如果value> = threshold返回其符号，否则返回0
+         * @param value
+         * @param threshold
+         * @returns
+         */
+        static signThreshold(value: number, threshold: number): number;
+        static inverseLerp(from: number, to: number, t: number): number;
+        /**
+         * 在两个值之间线性插值
+         * 此方法是MathHelper.Lerp的效率较低，更精确的版本。
+         */
+        static lerpPrecise(value1: number, value2: number, amount: number): number;
         static clamp(value: number, min: number, max: number): number;
+        static snap(value: number, increment: number): number;
         /**
          * 给定圆心、半径和角度，得到圆周上的一个点。0度是3点钟。
          * @param circleCenter
@@ -2239,6 +2383,19 @@ declare module es {
          */
         static isEven(value: number): boolean;
         /**
+         * 如果值是奇数，则返回true
+         * @param value
+         * @returns
+         */
+        static isOdd(value: number): boolean;
+        /**
+         * 将值四舍五入并返回它和四舍五入后的数值
+         * @param value
+         * @param roundedAmount
+         * @returns
+         */
+        static roundWithRoundedAmount(value: number, roundedAmount: Ref<number>): number;
+        /**
          * 数值限定在0-1之间
          * @param value
          */
@@ -2251,6 +2408,21 @@ declare module es {
          * @param length
          */
         static incrementWithWrap(t: number, length: number): number;
+        /**
+         * 递减t并确保其始终大于或等于0且小于长度
+         * @param t
+         * @param length
+         * @returns
+         */
+        static decrementWithWrap(t: number, length: number): number;
+        /**
+         * 返回sqrt（x * x + y * y）
+         * @param x
+         * @param y
+         * @returns
+         */
+        static hypotenuse(x: number, y: number): number;
+        static closestPowerOfTwoGreaterThan(x: number): number;
         /**
          * 以roundToNearest为步长，将值舍入到最接近的数字。例如：在125中找到127到最近的5个结果
          * @param value
@@ -2271,17 +2443,130 @@ declare module es {
          */
         static approach(start: number, end: number, shift: number): number;
         /**
+         * 通过偏移量钳位结果并选择最短路径，将起始角度向终止角度移动，起始值可以小于或大于终止值。
+         * 示例1：开始是30，结束是100，移位是25，结果为55
+         * 示例2：开始是340，结束是30，移位是25，结果是5（365换为5）
+         * @param start
+         * @param end
+         * @param shift
+         * @returns
+         */
+        static approachAngle(start: number, end: number, shift: number): number;
+        /**
+         * 通过将偏移量（全部以弧度为单位）夹住结果并选择最短路径，起始角度朝向终止角度。
+         * 起始值可以小于或大于终止值。
+         * 此方法的工作方式与“角度”方法非常相似，唯一的区别是使用弧度代替度，并以2 * Pi代替360。
+         * @param start
+         * @param end
+         * @param shift
+         * @returns
+         */
+        static approachAngleRadians(start: number, end: number, shift: number): number;
+        /**
+         * 使用可接受的检查公差检查两个值是否大致相同
+         * @param value1
+         * @param value2
+         * @param tolerance
+         * @returns
+         */
+        static approximately(value1: number, value2: number, tolerance?: number): boolean;
+        /**
          * 计算两个给定角之间的最短差值（度数）
          * @param current
          * @param target
          */
         static deltaAngle(current: number, target: number): number;
         /**
+         * 检查值是否介于最小值/最大值（包括最小值/最大值）之间
+         * @param value
+         * @param min
+         * @param max
+         * @returns
+         */
+        static between(value: number, min: number, max: number): boolean;
+        /**
+         * 计算以弧度为单位的两个给定角度之间的最短差
+         * @param current
+         * @param target
+         * @returns
+         */
+        static deltaAngleRadians(current: number, target: number): number;
+        /**
          * 循环t，使其永远不大于长度，永远不小于0
          * @param t
          * @param length
          */
         static repeat(t: number, length: number): number;
+        /**
+         * 将值绕一圈移动的助手
+         * @param position
+         * @param speed
+         * @returns
+         */
+        static rotateAround(position: Vector2, speed: number): Vector2;
+        /**
+         * 旋转是相对于当前位置而不是总旋转。
+         * 例如，如果您当前处于90度并且想要旋转到135度，则可以使用45度而不是135度的角度
+         * @param point
+         * @param center
+         * @param angleIndegrees
+         */
+        static rotateAround2(point: Vector2, center: Vector2, angleIndegrees: number): Vector2;
+        /**
+         * 根据圆的中心，半径和角度在圆的圆周上得到一个点。 0度是3点钟方向
+         * @param circleCenter
+         * @param radius
+         * @param angleInDegrees
+         */
+        static pointOnCircle(circleCenter: Vector2, radius: number, angleInDegrees: number): Vector2;
+        /**
+         * 根据圆的中心，半径和角度在圆的圆周上得到一个点。 0弧度是3点钟方向
+         * @param circleCenter
+         * @param radius
+         * @param angleInRadians
+         * @returns
+         */
+        static pointOnCircleRadians(circleCenter: Vector2, radius: number, angleInRadians: number): Vector2;
+        /**
+         * lissajou曲线
+         * @param xFrequency
+         * @param yFrequency
+         * @param xMagnitude
+         * @param yMagnitude
+         * @param phase
+         * @returns
+         */
+        static lissajou(xFrequency?: number, yFrequency?: number, xMagnitude?: number, yMagnitude?: number, phase?: number): Vector2;
+        /**
+         * lissajou曲线的阻尼形式，其振荡随时间在0和最大幅度之间。
+         * 为获得最佳效果，阻尼应在0到1之间。
+         * 振荡间隔是动画循环的一半完成的时间（以秒为单位）。
+         * @param xFrequency
+         * @param yFrequency
+         * @param xMagnitude
+         * @param yMagnitude
+         * @param phase
+         * @param damping
+         * @param oscillationInterval
+         * @returns
+         */
+        static lissajouDamped(xFrequency?: number, yFrequency?: number, xMagnitude?: number, yMagnitude?: number, phase?: number, damping?: number, oscillationInterval?: number): Vector2;
+        /**
+         * 执行Hermite样条插值
+         * @param value1
+         * @param tangent1
+         * @param value2
+         * @param tangent2
+         * @param amount
+         * @returns
+         */
+        static hermite(value1: number, tangent1: number, value2: number, tangent2: number, amount: number): any;
+        /**
+         * 此函数用于确保数不是NaN或无穷大
+         * @param x
+         * @returns
+         */
+        static isValid(x: number): boolean;
     }
 }
 declare module es {
@@ -3175,15 +3460,15 @@ declare module es {
         radius: number;
         _originalRadius: number;
         constructor(radius: number);
-        recalculateBounds(collider: es.Collider): void;
+        recalculateBounds(collider: Collider): void;
         overlaps(other: Shape): any;
         collidesWithShape(other: Shape, result: CollisionResult): boolean;
-        collidesWithLine(start: es.Vector2, end: es.Vector2, hit: es.RaycastHit): boolean;
+        collidesWithLine(start: Vector2, end: Vector2, hit: RaycastHit): boolean;
         /**
          * 获取所提供的点是否在此范围内
          * @param point
          */
-        containsPoint(point: es.Vector2): boolean;
+        containsPoint(point: Vector2): boolean;
         pointCollidesWithShape(point: Vector2, result: CollisionResult): boolean;
     }
 }
@@ -3233,12 +3518,49 @@ declare module es {
     }
 }
 declare module es {
-    /**
-     * 各种形状的碰撞例程
-     * 大多数人都希望第一个形状位于第二个形状的空间内(即shape1)
-     * pos应该设置为shape1。pos - shape2.pos)。
-     */
-    class ShapeCollisions {
+    class ShapeCollisionsBox {
+        static boxToBox(first: Box, second: Box, result: CollisionResult): boolean;
+        /**
+         * 用second检查被deltaMovement移动的框的结果
+         * @param first
+         * @param second
+         * @param movement
+         * @param hit
+         */
+        static boxToBoxCast(first: Box, second: Box, movement: Vector2, hit: RaycastHit): boolean;
+        private static minkowskiDifference;
+    }
+}
+declare module es {
+    class ShapeCollisionsCircle {
+        static circleToCircle(first: Circle, second: Circle, result?: CollisionResult): boolean;
+        /**
+         * 适用于中心在框内的圆，也适用于与框外中心重合的圆。
+         * @param circle
+         * @param box
+         * @param result
+         */
+        static circleToBox(circle: Circle, box: Box, result?: CollisionResult): boolean;
+        static circleToPolygon(circle: Circle, polygon: Polygon, result?: CollisionResult): boolean;
+        static closestPointOnLine(lineA: Vector2, lineB: Vector2, closestTo: Vector2): Vector2;
+    }
+}
+declare module es {
+    class ShapeCollisionsLine {
+        static lineToPoly(start: Vector2, end: Vector2, polygon: Polygon, hit?: RaycastHit): boolean;
+        static lineToLine(a1: Vector2, a2: Vector2, b1: Vector2, b2: Vector2, intersection: Vector2): boolean;
+        static lineToCircle(start: Vector2, end: Vector2, s: Circle, hit: RaycastHit): boolean;
+    }
+}
+declare module es {
+    class ShapeCollisionsPoint {
+        static pointToCircle(point: Vector2, circle: Circle, result: CollisionResult): boolean;
+        static pointToBox(point: Vector2, box: Box, result?: CollisionResult): boolean;
+        static pointToPoly(point: Vector2, poly: Polygon, result?: CollisionResult): boolean;
+    }
+}
+declare module es {
+    class ShapeCollisionsPolygon {
         /**
          * 检查两个多边形之间的碰撞
          * @param first
@@ -3246,14 +3568,6 @@ declare module es {
          * @param result
          */
         static polygonToPolygon(first: Polygon, second: Polygon, result: CollisionResult): boolean;
-        /**
-         * 计算[minA, maxA]和[minB, maxB]之间的距离。如果间隔重叠，距离是负的
-         * @param minA
-         * @param maxA
-         * @param minB
-         * @param maxB
-         */
-        static intervalDistance(minA: number, maxA: number, minB: number, maxB: any): number;
         /**
          * 计算一个多边形在一个轴上的投影，并返回一个[min，max]区间
          * @param axis
@@ -3263,67 +3577,13 @@ declare module es {
          */
         static getInterval(axis: Vector2, polygon: Polygon, min: Ref<number>, max: Ref<number>): void;
         /**
-         *
-         * @param circle
-         * @param polygon
-         * @param result
+         * 计算[minA, maxA]和[minB, maxB]之间的距离。如果间隔重叠，距离是负的
+         * @param minA
+         * @param maxA
+         * @param minB
+         * @param maxB
          */
-        static circleToPolygon(circle: Circle, polygon: Polygon, result?: CollisionResult): boolean;
-        /**
-         * 适用于中心在框内的圆，也适用于与框外中心重合的圆。
-         * @param circle
-         * @param box
-         * @param result
-         */
-        static circleToBox(circle: Circle, box: Box, result?: CollisionResult): boolean;
-        /**
-         *
-         * @param point
-         * @param circle
-         * @param result
-         */
-        static pointToCircle(point: Vector2, circle: Circle, result: CollisionResult): boolean;
-        static pointToBox(point: Vector2, box: Box, result: CollisionResult): boolean;
-        /**
-         *
-         * @param lineA
-         * @param lineB
-         * @param closestTo
-         */
-        static closestPointOnLine(lineA: Vector2, lineB: Vector2, closestTo: Vector2): Vector2;
-        /**
-         *
-         * @param point
-         * @param poly
-         * @param result
-         */
-        static pointToPoly(point: Vector2, poly: Polygon, result: CollisionResult): boolean;
-        /**
-         *
-         * @param first
-         * @param second
-         * @param result
-         */
-        static circleToCircle(first: Circle, second: Circle, result?: CollisionResult): boolean;
-        /**
-         *
-         * @param first
-         * @param second
-         * @param result
-         */
-        static boxToBox(first: Box, second: Box, result: CollisionResult): boolean;
-        private static minkowskiDifference;
-        static lineToPoly(start: Vector2, end: Vector2, polygon: Polygon, hit?: RaycastHit): boolean;
-        static lineToLine(a1: Vector2, a2: Vector2, b1: Vector2, b2: Vector2, intersection: Vector2): boolean;
-        static lineToCircle(start: Vector2, end: Vector2, s: Circle, hit: RaycastHit): boolean;
-        /**
-         * 用second检查被deltaMovement移动的框的结果
-         * @param first
-         * @param second
-         * @param movement
-         * @param hit
-         */
-        static boxToBoxCast(first: Box, second: Box, movement: Vector2, hit: RaycastHit): boolean;
+        static intervalDistance(minA: number, maxA: number, minB: number, maxB: any): number;
     }
 }
 declare module es {
@@ -3370,16 +3630,6 @@ declare module es {
         bottom = 1,
         left = 2,
         right = 3
-    }
-}
-declare module es {
-    class Enumerable {
-        /**
-         * 生成包含一个重复值的序列
-         * @param element 要重复的值
-         * @param count 在生成的序列中重复该值的次数
-         */
-        static repeat<T>(element: T, count: number): any[];
     }
 }
 declare module es {
@@ -3534,6 +3784,16 @@ declare module es {
         private initialize;
     }
 }
+declare module es {
+    class UUID {
+        static randomUUID(): string;
+    }
+}
+declare module es {
+    interface Class extends Function {
+    }
+    function getClassName(klass: any): string;
+}
 declare namespace es {
     /**
      * 记录时间的持续时间，一些设计灵感来自物理秒表。
@@ -3648,68 +3908,28 @@ declare namespace es {
     }
 }
 declare module es {
-    class TimeRuler {
-        /**
-         * 最大条数
-         */
-        static readonly maxBars: number;
-        /**
-         * 每条的最大样本数
-         */
-        static readonly maxSamples: number;
-        /**
-         *
-         */
-        static readonly maxNestCall: number;
-        /**
-         * 最大显示帧数
-         */
-        static readonly maxSampleFrames: number;
-        /**
-         * 拍摄快照的时间（以帧数为单位）
-         */
-        static readonly logSnapDuration: number;
-        private logs;
-        private prevLog;
-        private curLog;
-        private frameCount;
-        private stopwatch;
-        private markers;
-        private markerNameToIdMap;
-        enabled: boolean;
-        private static _instance;
-        static readonly Instance: TimeRuler;
-        /**
-         * 你想在Game.Update方法的开头调用StartFrame。
-         * 但是当游戏在固定时间步长模式下运行缓慢时，Game.Update会被多次调用。
-         * 在这种情况下，我们应该忽略StartFrame的调用，为了做到这一点，我们只需要跟踪StartFrame的调用次数
-         */
-        private updateCount;
-        constructor();
-        startFrame(): void;
-        /**
-         * 开始测量时间
-         * @param markerName
-         * @param color
-         * @param barIndex
-         */
-        beginMark(markerName: string, color: number, barIndex?: number): void;
-        /**
-         * 停止测量
-         * @param markerName
-         * @param barIndex
-         */
-        endMark(markerName: string, barIndex?: number): void;
-        /**
-         * 获取给定条形指数和标记名称的平均时间
-         * @param barIndex
-         * @param markerName
-         */
-        getAverageTime(barIndex: number, markerName: string): number;
-        /**
-         * 重置标记记录
-         */
-        resetLog(): void;
+    class Bag<E> implements ImmutableBag<E> {
+        size_: number;
+        length: number;
+        private array;
+        constructor(capacity?: number);
+        removeAt(index: number): E;
+        remove(e: E): boolean;
+        removeLast(): E;
+        contains(e: E): boolean;
+        removeAll(bag: ImmutableBag<E>): boolean;
+        get(index: number): E;
+        safeGet(index: number): E;
+        size(): number;
+        getCapacity(): number;
+        isIndexWithinBounds(index: number): boolean;
+        isEmpty(): boolean;
+        add(e: E): void;
+        set(index: number, e: E): void;
+        grow(newCapacity?: number): void;
+        ensureCapacity(index: number): void;
+        clear(): void;
+        addAll(items: ImmutableBag<E>): void;
     }
 }
 declare module es {
@@ -3757,6 +3977,14 @@ declare module es {
         previous: number;
         next: number;
         constructor(key: any, hash: number, previousNode?: number);
+    }
+}
+declare module es {
+    interface ImmutableBag<E> {
+        get(index: number): E;
+        size(): number;
+        isEmpty(): boolean;
+        contains(e: E): boolean;
     }
 }
 declare module es {
@@ -3836,14 +4064,14 @@ declare module es {
     /**
      * 用于池任何对象
      */
-    class Pool<T> {
+    class Pool {
         private static _objectQueue;
         /**
          * 预热缓存，使用最大的cacheCount对象填充缓存
          * @param type
          * @param cacheCount
          */
-        static warmCache(type: any, cacheCount: number): void;
+        static warmCache<T>(type: new (...args: any[]) => T, cacheCount: number): void;
         /**
          * 将缓存修剪为cacheCount项目
          * @param cacheCount
@@ -3856,7 +4084,7 @@ declare module es {
         /**
          * 如果可以的话，从堆栈中弹出一个项
          */
-        static obtain<T>(type: any): T;
+        static obtain<T>(type: new (...args: any[]) => T): T;
         /**
          * 将项推回堆栈
          * @param obj
@@ -4030,119 +4258,121 @@ declare module es {
         isContainedIn(a: Rectangle, b: Rectangle): boolean;
     }
 }
-declare class ArrayUtils {
-    /**
-     * 执行冒泡排序
-     * @param ary
-     */
-    static bubbleSort(ary: number[]): void;
-    /**
-     * 执行插入排序
-     * @param ary
-     */
-    static insertionSort(ary: number[]): void;
-    /**
-     * 执行二分搜索
-     * @param ary 搜索的数组（必须排序过）
-     * @param value 需要搜索的值
-     * @returns 返回匹配结果的数组索引
-     */
-    static binarySearch(ary: number[], value: number): number;
-    /**
-     * 返回匹配项的索引
-     * @param ary
-     * @param num
-     */
-    static findElementIndex(ary: any[], num: any): any;
-    /**
-     * 返回数组中最大值的索引
-     * @param ary
-     */
-    static getMaxElementIndex(ary: number[]): number;
-    /**
-     * 返回数组中最小值的索引
-     * @param ary
-     */
-    static getMinElementIndex(ary: number[]): number;
-    /**
-     * 返回一个"唯一性"数组
-     * @param ary 需要唯一性的数组
-     * @returns 唯一性的数组
-     *
-     * @tutorial
-     * 比如: [1, 2, 2, 3, 4]
-     * 返回: [1, 2, 3, 4]
-     */
-    static getUniqueAry(ary: number[]): number[];
-    /**
-     * 返回2个数组中不同的部分
-     * 比如数组A = [1, 2, 3, 4, 6]
-     *    数组B = [0, 2, 1, 3, 4]
-     * 返回[6, 0]
-     * @param    aryA
-     * @param    aryB
-     * @return
-     */
-    static getDifferAry(aryA: number[], aryB: number[]): number[];
-    /**
-     * 交换数组元素
-     * @param    array    目标数组
-     * @param    index1    交换后的索引
-     * @param    index2    交换前的索引
-     */
-    static swap(array: any[], index1: number, index2: number): void;
-    /**
-     * 清除列表
-     * @param ary
-     */
-    static clearList(ary: any[]): void;
-    /**
-     * 克隆一个数组
-     * @param    ary 需要克隆的数组
-     * @return  克隆的数组
-     */
-    static cloneList(ary: any[]): any[];
-    /**
-     * 判断2个数组是否相同
-     * @param ary1 数组1
-     * @param ary2 数组2
-     */
-    static equals(ary1: number[], ary2: number[]): Boolean;
-    /**
-     * 根据索引插入元素，索引和索引后的元素都向后移动一位
-     * @param ary
-     * @param index 插入索引
-     * @param value 插入的元素
-     * @returns 插入的元素 未插入则返回空
-     */
-    static insert(ary: any[], index: number, value: any): any;
-    /**
-     * 打乱数组 Fisher–Yates shuffle
-     * @param list
-     */
-    static shuffle<T>(list: T[]): void;
-    /**
-     * 如果项目已经在列表中，返回false，如果成功添加，返回true
-     * @param list
-     * @param item
-     */
-    static addIfNotPresent<T>(list: T[], item: T): boolean;
-    /**
-     * 返回列表中的最后一项。列表中至少应该有一个项目
-     * @param list
-     */
-    static lastItem<T>(list: T[]): T;
-    /**
-     * 从列表中随机获取一个项目。不清空检查列表!
-     * @param list
-     */
-    static randomItem<T>(list: T[]): T;
-    /**
-     * 从列表中随机获取物品。不清空检查列表，也不验证列表数是否大于项目数。返回的List可以通过ListPool.free放回池中
-     * @param list
-     * @param itemCount 从列表中返回的随机项目的数量
-     */
-    static randomItems<T>(list: T[], itemCount: number): T[];
+declare module es {
+    class ArrayUtils {
+        /**
+         * 执行冒泡排序
+         * @param ary
+         */
+        static bubbleSort(ary: number[]): void;
+        /**
+         * 执行插入排序
+         * @param ary
+         */
+        static insertionSort(ary: number[]): void;
+        /**
+         * 执行二分搜索
+         * @param ary 搜索的数组（必须排序过）
+         * @param value 需要搜索的值
+         * @returns 返回匹配结果的数组索引
+         */
+        static binarySearch(ary: number[], value: number): number;
+        /**
+         * 返回匹配项的索引
+         * @param ary
+         * @param num
+         */
+        static findElementIndex(ary: any[], num: any): any;
+        /**
+         * 返回数组中最大值的索引
+         * @param ary
+         */
+        static getMaxElementIndex(ary: number[]): number;
+        /**
+         * 返回数组中最小值的索引
+         * @param ary
+         */
+        static getMinElementIndex(ary: number[]): number;
+        /**
+         * 返回一个"唯一性"数组
+         * @param ary 需要唯一性的数组
+         * @returns 唯一性的数组
+         *
+         * @tutorial
+         * 比如: [1, 2, 2, 3, 4]
+         * 返回: [1, 2, 3, 4]
+         */
+        static getUniqueAry(ary: number[]): number[];
+        /**
+         * 返回2个数组中不同的部分
+         * 比如数组A = [1, 2, 3, 4, 6]
+         *    数组B = [0, 2, 1, 3, 4]
+         * 返回[6, 0]
+         * @param    aryA
+         * @param    aryB
+         * @return
+         */
+        static getDifferAry(aryA: number[], aryB: number[]): number[];
+        /**
+         * 交换数组元素
+         * @param    array    目标数组
+         * @param    index1    交换后的索引
+         * @param    index2    交换前的索引
+         */
+        static swap(array: any[], index1: number, index2: number): void;
+        /**
+         * 清除列表
+         * @param ary
+         */
+        static clearList(ary: any[]): void;
+        /**
+         * 克隆一个数组
+         * @param    ary 需要克隆的数组
+         * @return  克隆的数组
+         */
+        static cloneList(ary: any[]): any[];
+        /**
+         * 判断2个数组是否相同
+         * @param ary1 数组1
+         * @param ary2 数组2
+         */
+        static equals(ary1: number[], ary2: number[]): Boolean;
+        /**
+         * 根据索引插入元素，索引和索引后的元素都向后移动一位
+         * @param ary
+         * @param index 插入索引
+         * @param value 插入的元素
+         * @returns 插入的元素 未插入则返回空
+         */
+        static insert(ary: any[], index: number, value: any): any;
+        /**
+         * 打乱数组 Fisher–Yates shuffle
+         * @param list
+         */
+        static shuffle<T>(list: T[]): void;
+        /**
+         * 如果项目已经在列表中，返回false，如果成功添加，返回true
+         * @param list
+         * @param item
+         */
+        static addIfNotPresent<T>(list: T[], item: T): boolean;
+        /**
+         * 返回列表中的最后一项。列表中至少应该有一个项目
+         * @param list
+         */
+        static lastItem<T>(list: T[]): T;
+        /**
+         * 从列表中随机获取一个项目。不清空检查列表!
+         * @param list
+         */
+        static randomItem<T>(list: T[]): T;
+        /**
+         * 从列表中随机获取物品。不清空检查列表，也不验证列表数是否大于项目数。返回的List可以通过ListPool.free放回池中
+         * @param list
+         * @param itemCount 从列表中返回的随机项目的数量
+         */
+        static randomItems<T>(list: T[], itemCount: number): T[];
+    }
 }
 declare module es {
     class Base64Utils {
@@ -4202,74 +4432,76 @@ declare module es {
         static toNumber(value: any): number;
     }
 }
-declare class RandomUtils {
-    /**
-     * 在 start 与 stop之间取一个随机整数，可以用step指定间隔， 但不包括较大的端点（start与stop较大的一个）
-     * 如
-     * this.randrange(1, 10, 3)
-     * 则返回的可能是   1 或  4 或  7  , 注意 这里面不会返回10，因为是10是大端点
-     *
-     * @param start
-     * @param stop
-     * @param step
-     * @return 假设 start < stop,  [start, stop) 区间内的随机整数
-     *
-     */
-    static randrange(start: number, stop: number, step?: number): number;
-    /**
-     * 返回a 到 b之间的随机整数，包括 a 和 b
-     * @param a
-     * @param b
-     * @return [a, b] 之间的随机整数
-     *
-     */
-    static randint(a: number, b: number): number;
-    /**
-     * 返回 a - b之间的随机数，不包括  Math.max(a, b)
-     * @param a
-     * @param b
-     * @return 假设 a < b, [a, b)
-     */
-    static randnum(a: number, b: number): number;
-    /**
-     * 打乱数组
-     * @param array
-     * @return
-     */
-    static shuffle(array: any[]): any[];
-    /**
-     * 从序列中随机取一个元素
-     * @param sequence 可以是 数组、 vector，等只要是有length属性，并且可以用数字索引获取元素的对象，
-     *                 另外，字符串也是允许的。
-     * @return 序列中的某一个元素
-     *
-     */
-    static choice(sequence: any): any;
-    /**
-     * 对列表中的元素进行随机采æ ?
-     * <pre>
-     * this.sample([1, 2, 3, 4, 5],  3)  // Choose 3 elements
-     * [4, 1, 5]
-     * </pre>
-     * @param sequence
-     * @param num
-     * @return
-     *
-     */
-    static sample(sequence: any[], num: number): any[];
-    /**
-     * 返回 0.0 - 1.0 之间的随机数，等同于 Math.random()
-     * @return Math.random()
-     *
-     */
-    static random(): number;
-    /**
-     * 计算概率
-     * @param    chance 概率
-     * @return
-     */
-    static boolean(chance?: number): boolean;
-    private static _randomCompare;
+declare module es {
+    class RandomUtils {
+        /**
+         * 在 start 与 stop之间取一个随机整数，可以用step指定间隔， 但不包括较大的端点（start与stop较大的一个）
+         * 如
+         * this.randrange(1, 10, 3)
+         * 则返回的可能是   1 或  4 或  7  , 注意 这里面不会返回10，因为是10是大端点
+         *
+         * @param start
+         * @param stop
+         * @param step
+         * @return 假设 start < stop,  [start, stop) 区间内的随机整数
+         *
+         */
+        static randrange(start: number, stop: number, step?: number): number;
+        /**
+         * 返回a 到 b之间的随机整数，包括 a 和 b
+         * @param a
+         * @param b
+         * @return [a, b] 之间的随机整数
+         *
+         */
+        static randint(a: number, b: number): number;
+        /**
+         * 返回 a - b之间的随机数，不包括  Math.max(a, b)
+         * @param a
+         * @param b
+         * @return 假设 a < b, [a, b)
+         */
+        static randnum(a: number, b: number): number;
+        /**
+         * 打乱数组
+         * @param array
+         * @return
+         */
+        static shuffle(array: any[]): any[];
+        /**
+         * 从序列中随机取一个元素
+         * @param sequence 可以是 数组、 vector，等只要是有length属性，并且可以用数字索引获取元素的对象，
+         *                 另外，字符串也是允许的。
+         * @return 序列中的某一个元素
+         *
+         */
+        static choice(sequence: any): any;
+        /**
+         * 对列表中的元素进行随机采æ ?
+         * <pre>
+         * this.sample([1, 2, 3, 4, 5],  3)  // Choose 3 elements
+         * [4, 1, 5]
+         * </pre>
+         * @param sequence
+         * @param num
+         * @return
+         *
+         */
+        static sample(sequence: any[], num: number): any[];
+        /**
+         * 返回 0.0 - 1.0 之间的随机数，等同于 Math.random()
+         * @return Math.random()
+         *
+         */
+        static random(): number;
+        /**
+         * 计算概率
+         * @param    chance 概率
+         * @return
+         */
+        static boolean(chance?: number): boolean;
+        private static _randomCompare;
+    }
 }
 declare module es {
     class RectangleExt {
@@ -4332,6 +4564,38 @@ declare module es {
          * 如果矩形不相交，则返回Vector2.zero。
          */
         static getIntersectionDepth(rectA: Rectangle, rectB: Rectangle): Vector2;
+        static getClosestPointOnBoundsToOrigin(rect: Rectangle): Vector2;
+        /**
+         * 将Rectangle中或上的最接近点返回给定点
+         * @param rect
+         * @param point
+         */
+        static getClosestPointOnRectangleToPoint(rect: Rectangle, point: Vector2): Vector2;
+        /**
+         * 获取矩形边界上与给定点最接近的点
+         * @param rect
+         * @param point
+         */
+        static getClosestPointOnRectangleBorderToPoint(rect: Rectangle, point: Vector2): Vector2;
+        static getMax(rect: Rectangle): Vector2;
+        /**
+         * 以Vector2的形式获取矩形的中心点
+         * @param rect
+         * @returns
+         */
+        static getCenter(rect: Rectangle): Vector2;
+        /**
+         * 给定多边形的点即可计算边界
+         * @param points
+         */
+        static boundsFromPolygonPoints(points: Vector2[]): Rectangle;
+        /**
+         * 缩放矩形
+         * @param rect
+         * @param scale
+         */
+        static scale(rect: Rectangle, scale: Vector2): void;
+        static translate(rect: Rectangle, vec: Vector2): void;
     }
 }
 declare module es {
@@ -4378,6 +4642,13 @@ declare module es {
          */
         static angle(from: Vector2, to: Vector2): number;
         /**
+         * 返回以自度为中心的左右角度
+         * @param self
+         * @param left
+         * @param right
+         */
+        static angleBetween(self: Vector2, left: Vector2, right: Vector2): number;
+        /**
          * 给定两条直线(ab和cd)，求交点
          * @param a
          * @param b
@@ -4419,7 +4690,7 @@ declare module es {
         static round(vec: Vector2): Vector2;
     }
 }
-declare module linq {
+declare module es {
     class Enumerable {
         /**
          * 在指定范围内生成一个整数序列。
@@ -4431,7 +4702,7 @@ declare module linq {
         static repeat<T>(element: T, count: number): List<T>;
     }
 }
-declare module linq {
+declare module es {
     /**
      * 检查传递的参数是否为对象
      */
@@ -4446,7 +4717,7 @@ declare module linq {
     const composeComparers: <T>(previousComparer: (a: T, b: T) => number, currentComparer: (a: T, b: T) => number) => (a: T, b: T) => number;
     const keyComparer: <T>(_keySelector: (key: T) => string, descending?: boolean) => (a: T, b: T) => number;
 }
-declare module linq {
+declare module es {
     type PredicateType<T> = (value?: T, index?: number, list?: T[]) => boolean;
     class List<T> {
         protected _elements: T[];

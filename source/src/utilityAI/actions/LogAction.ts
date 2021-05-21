@@ -1,5 +1,5 @@
-module utility{
-    class LogAction<T> implements IAction<T>{
+module utilityAI {
+    export class LogAction<T> implements IAction<T>{
         private _text: string;
 
         constructor(text: string){

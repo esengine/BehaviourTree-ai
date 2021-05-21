@@ -1,6 +1,8 @@
-enum TaskStatus{
-    Invalid,
-    Success,
-    Failure,
-    Running
+module behaviourTree {
+    export enum TaskStatus{
+        Invalid,
+        Success,
+        Failure,
+        Running
+    }
 }

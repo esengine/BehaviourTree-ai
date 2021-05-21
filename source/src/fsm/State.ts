@@ -1,7 +1,7 @@
 module fsm{
     export abstract class State<T>{
-        protected _machine: StateMachine<T>;
-        protected _context: T;
+        protected _machine!: StateMachine<T>;
+        protected _context!: T;
 
         public setMachineAndContext(machine: StateMachine<T>, context: T){
             this._machine = machine;
@@ -37,7 +37,7 @@ module fsm{
          * @param {number} deltaTime
          * @memberof State
          */
-        public abstract update(deltaTime: number);
+        public abstract update(deltaTime: number): void;
 
         /**
          * 此状态不再是活动状态时调用

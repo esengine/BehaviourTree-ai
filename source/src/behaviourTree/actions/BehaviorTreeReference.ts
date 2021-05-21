@@ -1,18 +1,20 @@
-/**
- * 作为子项运行整个BehaviorTree并返回成功
- */
-class BehaviorTreeReference<T> extends Behavior<T>{
-    private _childTree: BehaviorTree<T>;
+module behaviourTree {
+    /**
+     * 作为子项运行整个BehaviorTree并返回成功
+     */
+    export class BehaviorTreeReference<T> extends Behavior<T>{
+        private _childTree: BehaviorTree<T>;
 
-    constructor(tree: BehaviorTree<T>){
-        super();
+        constructor(tree: BehaviorTree<T>){
+            super();
 
-        this._childTree = tree;
-    }
+            this._childTree = tree;
+        }
 
-    public update(context: T): TaskStatus{
-        this._childTree.tick();
+        public update(context: T): TaskStatus{
+            this._childTree.tick();
 
-        return TaskStatus.Success;
+            return TaskStatus.Success;
+        }
     }
 }

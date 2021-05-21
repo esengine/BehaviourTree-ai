@@ -1,7 +1,7 @@
 {
-  "name": "@esengine/egret-BehaviourTree-ai",
+  "name": "@esengine/ai",
   "version": "1.0.0",
-  "description": "BehaviourTree",
+  "description": "ai",
   "main": "index.js",
   "directories": {
     "lib": "lib"

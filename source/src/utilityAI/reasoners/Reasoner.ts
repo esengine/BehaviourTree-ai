@@ -1,30 +1,32 @@
-/**
- * UtilityAI的根节点
- */
-abstract class Reasoner<T>{
-    public defaultConsideration: IConsideration<T> = new FixedScoreConsideration<T>();
+module utilityAI {
+    /**
+     * UtilityAI的根节点
+     */
+    export abstract class Reasoner<T>{
+        public defaultConsideration: IConsideration<T> = new FixedScoreConsideration<T>();
 
-    protected _condiderations: Array<IConsideration<T>> = new Array<IConsideration<T>>();
+        protected _condiderations: Array<IConsideration<T>> = new Array<IConsideration<T>>();
 
-    public select(context: T): IAction<T>{
-        let consideration = this.selectBestConsideration(context);
-        if (consideration != null)
-            return consideration.action;
+        public select(context: T): IAction<T> | null {
+            let consideration = this.selectBestConsideration(context);
+            if (consideration != null)
+                return consideration.action;
 
-        return null;
-    } 
+            return null;
+        } 
 
-    protected abstract selectBestConsideration(context: T): IConsideration<T>;
+        protected abstract selectBestConsideration(context: T): IConsideration<T>;
 
-    public addConsideration(consideration: IConsideration<T>): Reasoner<T>{
-        this._condiderations.push(consideration);
+        public addConsideration(consideration: IConsideration<T>): Reasoner<T>{
+            this._condiderations.push(consideration);
 
-        return this;
-    }
+            return this;
+        }
 
-    public setDefaultConsideration(defaultConsideration: IConsideration<T>): Reasoner<T>{
-        this.defaultConsideration = defaultConsideration;
+        public setDefaultConsideration(defaultConsideration: IConsideration<T>): Reasoner<T>{
+            this.defaultConsideration = defaultConsideration;
 
-        return this;
+            return this;
+        }
     }
 }

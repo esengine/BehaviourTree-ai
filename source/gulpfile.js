@@ -8,8 +8,8 @@ const tsProject = ts.createProject('tsconfig.json');
 gulp.task('buildJs', () => {
     return tsProject.src()
         .pipe(tsProject())
-        .js.pipe(inject.replace('var aiTree;', ''))
-        .pipe(inject.prepend('window.aiTree = {};\n'))
+        .js.pipe(inject.replace('var fsm; var behaviourTree; var utilityAI;', ''))
+        .pipe(inject.prepend('window.fsm = {}; window.behaviourTree = {}; window.utilityAI = {};\n'))
         .pipe(inject.replace('var __extends =', 'window.__extends ='))
         .pipe(minify({ ext: { min: ".min.js" } }))
         .pipe(gulp.dest('./bin'));
@@ -23,5 +23,5 @@ gulp.task("buildDts", ["buildJs"], () => {
 
 gulp.task("build", ["buildDts"], () => {
     return gulp.src('bin/**/*')
-        .pipe(gulp.dest('../demo/libs/aiTree/'))
+        // .pipe(gulp.dest('../demo/libs/aiTree/'))
 });
