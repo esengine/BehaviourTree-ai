@@ -231,6 +231,7 @@ this.aiComponent.start();
 
 ```typescript
 this.aiComponent.update();
+```
   
 ### Utility Based AI
 游戏效用理论。 最复杂的AI解决方案。 最适合在其计分系统最有效的动态环境中使用。 基于实用程序的AI更适用于AI可以采取大量潜在竞争行为的情况，例如在RTS中。
