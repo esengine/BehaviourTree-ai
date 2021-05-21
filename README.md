@@ -1,5 +1,5 @@
 # BehaviourTree、UtilityAI、FSM
-基于ecs-framework开发的AI（BehaviourTree、UtilityAI、FSM）系统，一套已经非常完整的系统。大家可以自行看源代码来学习，项目当中也有好几个示例，如果对项目你有更多的解决方案可发起 `pull request`请求或者有任何疑问可发起`issue`。
+基于ecs-framework开发的AI（BehaviourTree、UtilityAI、FSM）系统，一套已经非常完整的系统。教程较少，可以自行看源代码来学习。
 
 ## 目录结构
 
@@ -220,14 +220,14 @@ enum Locate{
 }
 ```
 
-这两个文件是主要行为树文件。最后只需要在主文件当中进行实例化 `AiComponent`. 
+开始行为树
 
 ```typescript
 this.aiComponent = new AiComponent();
 this.aiComponent.start();
 ```
 
-并且对egret当中`egret.Event.ENTER_FRAME`进行监听。让行为树系统进行每帧更新
+最后还需要对aiComponent进行派发update事件更新
 
 ```typescript
 this.aiComponent.update();
