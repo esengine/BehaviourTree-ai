@@ -31,8 +31,8 @@
   let machine = new SKStateMachine<SomeClass>( someClass, new PatrollingState() );
   
   // 我们现在可以添加任何其他状态 
-  machine.addState(AttackState, new AttackState());
-  machine.addState(ChaseState, new ChaseState());
+  machine.addState(new AttackState());
+  machine.addState(new ChaseState());
   
   // 通常在更新对象时调用此方法 
   machine.update(es.Time.deltaTime);
