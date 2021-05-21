@@ -231,21 +231,6 @@ this.aiComponent.start();
 
 ```typescript
 this.aiComponent.update();
-```
-
-### GOAP
-GOAP与其他AI解决方案有很大的不同。 使用GOAP，您可以为计划者提供AI可以执行的动作，当前世界状态和所需世界状态（目标状态）的列表。 然后，GOAP将尝试找到一系列将AI达到目标状态的动作。
-
-它由一个GOAP和一个只有3种状态的状态机组成：GoTo，Animate，UseSmartObject。
-  
-#### ActionPlanner
-相当于大脑。 您将所有的动作，当前的世界状态和目标状态交给ActionPlanner，它将为您提供实现目标状态的最佳方案。 
-  
-#### Action
-动作定义了所需的前提条件列表以及执行动作时将发生的后置条件列表。 
-  
-#### Agent
-代理是封装AI代理的帮助程序类。 它保留了可用操作的列表以及对ActionPlanner的引用。 代理是抽象的，需要您定义`getWorldState`和`getGoalState`方法。 有了这些计划，获得计划就像调用`agent.Plan()`一样简单。 
   
 ### Utility Based AI
 游戏效用理论。 最复杂的AI解决方案。 最适合在其计分系统最有效的动态环境中使用。 基于实用程序的AI更适用于AI可以采取大量潜在竞争行为的情况，例如在RTS中。
