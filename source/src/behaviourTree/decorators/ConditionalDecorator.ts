@@ -5,6 +5,7 @@ module behaviourTree {
      * 默认情况下，该条件将在每一次执行中被重新评估
      */
     export class ConditionalDecorator<T> extends Decorator<T> implements IConditional<T> {
+        public readonly discriminator: "IConditional" = "IConditional";
         private _conditional: IConditional<T>;
         private _shouldReevaluate: boolean;
         private _conditionalStatus: TaskStatus = TaskStatus.Invalid;

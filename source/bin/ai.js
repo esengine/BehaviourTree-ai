@@ -667,7 +667,9 @@ var behaviourTree;
     var ExecuteActionConditional = /** @class */ (function (_super) {
         __extends(ExecuteActionConditional, _super);
         function ExecuteActionConditional(action) {
-            return _super.call(this, action) || this;
+            var _this = _super.call(this, action) || this;
+            _this.discriminator = "IConditional";
+            return _this;
         }
         return ExecuteActionConditional;
     }(behaviourTree.ExecuteAction));
@@ -675,7 +677,10 @@ var behaviourTree;
 })(behaviourTree || (behaviourTree = {}));
 var behaviourTree;
 (function (behaviourTree) {
-    behaviourTree.isIConditional = function (props) { return typeof props['update'] !== 'undefined'; };
+    function isIConditional(obj) {
+        return obj.discriminator === 'IConditional';
+    }
+    behaviourTree.isIConditional = isIConditional;
 })(behaviourTree || (behaviourTree = {}));
 var behaviourTree;
 (function (behaviourTree) {
@@ -688,6 +693,7 @@ var behaviourTree;
         __extends(RandomProbability, _super);
         function RandomProbability(successProbability) {
             var _this = _super.call(this) || this;
+            _this.discriminator = "IConditional";
             _this._successProbability = successProbability;
             return _this;
         }
@@ -774,6 +780,7 @@ var behaviourTree;
         function ConditionalDecorator(conditional, shouldReevalute) {
             if (shouldReevalute === void 0) { shouldReevalute = true; }
             var _this = _super.call(this) || this;
+            _this.discriminator = "IConditional";
             _this._conditionalStatus = behaviourTree.TaskStatus.Invalid;
             behaviourTree.Assert.isTrue(behaviourTree.isIConditional(conditional), "conditional 必须继承 IConditional");
             _this._conditional = conditional;

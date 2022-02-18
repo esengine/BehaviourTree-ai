@@ -5,6 +5,7 @@ module behaviourTree {
      * successProbability应该在0和1之间
      */
     export class RandomProbability<T> extends Behavior<T> implements IConditional<T>{
+        public readonly discriminator: "IConditional" = "IConditional";
         /** 任务返回成功的机会 */
         private _successProbability: number;
     

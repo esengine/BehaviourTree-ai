@@ -289,14 +289,16 @@ declare module behaviourTree {
      * 包装一个ExecuteAction，这样它就可以作为一个ConditionalAction使用
      */
     class ExecuteActionConditional<T> extends ExecuteAction<T> implements IConditional<T> {
+        readonly discriminator: "IConditional";
         constructor(action: (t: T) => TaskStatus);
     }
 }
 declare module behaviourTree {
     interface IConditional<T> {
+        readonly discriminator: 'IConditional';
         update(context: T): TaskStatus;
     }
-    var isIConditional: (props: any) => props is IConditional<any>;
+    function isIConditional(obj: any): boolean;
 }
 declare module behaviourTree {
     /**
@@ -305,6 +307,7 @@ declare module behaviourTree {
      * successProbability应该在0和1之间
      */
     class RandomProbability<T> extends Behavior<T> implements IConditional<T> {
+        readonly discriminator: "IConditional";
         /** 任务返回成功的机会 */
         private _successProbability;
         constructor(successProbability: number);
@@ -339,6 +342,7 @@ declare module behaviourTree {
      * 默认情况下，该条件将在每一次执行中被重新评估
      */
     class ConditionalDecorator<T> extends Decorator<T> implements IConditional<T> {
+        readonly discriminator: "IConditional";
         private _conditional;
         private _shouldReevaluate;
         private _conditionalStatus;

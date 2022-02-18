@@ -1,7 +1,10 @@
 module behaviourTree {
     export interface IConditional<T>{
+        readonly discriminator: 'IConditional';
         update(context: T): TaskStatus;
     }
     
-    export var isIConditional = (props: any): props is IConditional<any> => typeof (props as IConditional<any>)['update'] !== 'undefined';
+    export function isIConditional(obj: any) {
+        return obj.discriminator === 'IConditional';
+    }
 }
