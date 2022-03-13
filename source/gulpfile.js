@@ -8,7 +8,9 @@ const tsProject = ts.createProject('tsconfig.json');
 gulp.task('buildJs', () => {
     return tsProject.src()
         .pipe(tsProject())
-        .js.pipe(inject.replace('var fsm; var behaviourTree; var utilityAI;', ''))
+        .js.pipe(inject.replace('var behaviourTree;', ''))
+        .pipe(inject.replace('var fsm;', ''))
+        .pipe(inject.replace('var utilityAI;', ''))
         .pipe(inject.prepend('window.fsm = {}; window.behaviourTree = {}; window.utilityAI = {};\n'))
         .pipe(inject.replace('var __extends =', 'window.__extends ='))
         .pipe(minify({ ext: { min: ".min.js" } }))

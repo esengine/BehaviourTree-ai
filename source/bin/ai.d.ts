@@ -437,6 +437,20 @@ declare module behaviourTree {
     }
 }
 declare module fsm {
+    abstract class SimpleStateMachine<TEnum> extends es.Component implements es.IUpdatable {
+        protected elapsedTimeInState: number;
+        protected previousState: TEnum;
+        private _stateCache;
+        private _stateMethods;
+        private _currentState;
+        protected currentState: TEnum;
+        protected initialState: TEnum;
+        constructor(stateType: any);
+        private configureAndCacheState;
+        update(): void;
+    }
+}
+declare module fsm {
     abstract class State<T> {
         protected _machine: StateMachine<T>;
         protected _context: T;

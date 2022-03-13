@@ -9,8 +9,6 @@
     "preserveConstEnums": true,
     "removeComments": false,
     "outFile": "./ai.js",
-    "alwaysStrict": true,
-    "strict": true,
     "lib": [
       "es5",
       "dom",

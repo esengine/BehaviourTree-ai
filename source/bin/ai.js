@@ -1,4 +1,3 @@
-"use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
         ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -1027,6 +1026,70 @@ var behaviourTree;
     }());
     behaviourTree.Random = Random;
 })(behaviourTree || (behaviourTree = {}));
+var fsm;
+(function (fsm) {
+    var StateMethodCache = /** @class */ (function () {
+        function StateMethodCache() {
+        }
+        return StateMethodCache;
+    }());
+    var SimpleStateMachine = /** @class */ (function (_super) {
+        __extends(SimpleStateMachine, _super);
+        function SimpleStateMachine(stateType) {
+            var _this = _super.call(this) || this;
+            _this.elapsedTimeInState = 0;
+            _this._stateCache = new Map();
+            for (var enumValues in stateType) {
+                _this.configureAndCacheState(stateType, stateType[enumValues]);
+            }
+            return _this;
+        }
+        Object.defineProperty(SimpleStateMachine.prototype, "currentState", {
+            get: function () {
+                return this._currentState;
+            },
+            set: function (value) {
+                if (this._currentState == value)
+                    return;
+                this.previousState = this._currentState;
+                this._currentState = value;
+                if (this._stateMethods.exitState != null)
+                    this._stateMethods.exitState.call(this);
+                this.elapsedTimeInState = 0;
+                this._stateMethods = this._stateCache.get(this._currentState);
+                if (this._stateMethods.enterState != null)
+                    this._stateMethods.enterState.call(this);
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(SimpleStateMachine.prototype, "initialState", {
+            set: function (value) {
+                this._currentState = value;
+                this._stateMethods = this._stateCache.get(this._currentState);
+                if (this._stateMethods.enterState != null)
+                    this._stateMethods.enterState.call(this);
+            },
+            enumerable: true,
+            configurable: true
+        });
+        SimpleStateMachine.prototype.configureAndCacheState = function (stateType, stateEnum) {
+            var stateName = stateType[stateEnum];
+            var state = new StateMethodCache();
+            state.enterState = this[stateName + "_enter"];
+            state.tick = this[stateName + "_tick"];
+            state.exitState = this[stateName + "_exit"];
+            this._stateCache.set(stateEnum, state);
+        };
+        SimpleStateMachine.prototype.update = function () {
+            this.elapsedTimeInState += es.Time.deltaTime;
+            if (this._stateMethods.tick != null)
+                this._stateMethods.tick.call(this);
+        };
+        return SimpleStateMachine;
+    }(es.Component));
+    fsm.SimpleStateMachine = SimpleStateMachine;
+})(fsm || (fsm = {}));
 var fsm;
 (function (fsm) {
     var State = /** @class */ (function () {
