@@ -1,26 +1,77 @@
 {
   "compilerOptions": {
-    "module": "system",
-    "target": "es5",
+    "target": "es2020",
+    "module": "esnext",
+    "lib": ["es2020", "dom"],
+    "moduleResolution": "node",
+    "allowJs": false,
     "declaration": true,
-    "sourceMap": false,
-    "importHelpers": true,
-    "pretty": true,
-    "preserveConstEnums": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
     "removeComments": false,
-    "outFile": "./ai.js",
-    "lib": [
-      "es5",
-      "dom",
-      "es2015.promise",
-      "es6"
-    ]
+    "noEmit": false,
+    "importHelpers": true,
+    "downlevelIteration": true,
+    "isolatedModules": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "baseUrl": "./src",
+    "paths": {
+      "@/*": ["./*"],
+      "@behaviourTree/*": ["./behaviourTree/*"],
+      "@core/*": ["./core/*"],
+      "@fsm/*": ["./fsm/*"],
+      "@utilityAI/*": ["./utilityAI/*"]
+    },
+    "typeRoots": ["./node_modules/@types"],
+    "types": [],
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "preserveSymlinks": false,
+    "allowUmdGlobalAccess": false,
+    "sourceRoot": "",
+    "mapRoot": "",
+    "inlineSourceMap": false,
+    "inlineSources": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": false,
+    "noResolve": false,
+
+    "newLine": "lf",
+    "noErrorTruncation": false,
+    "noImplicitUseStrict": false,
+    "noStrictGenericChecks": false,
+    "suppressExcessPropertyErrors": false,
+    "suppressImplicitAnyIndexErrors": false,
+    "useDefineForClassFields": true
   },
   "include": [
-    "src",
-    "lib"
+    "src/**/*"
   ],
   "exclude": [
-    "node_modules"
-  ]
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ],
+  "ts-node": {
+    "esm": true
+  }
 }

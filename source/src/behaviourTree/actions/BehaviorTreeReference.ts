@@ -1,20 +1,22 @@
-module behaviourTree {
-    /**
-     * 作为子项运行整个BehaviorTree并返回成功
-     */
-    export class BehaviorTreeReference<T> extends Behavior<T>{
-        private _childTree: BehaviorTree<T>;
+import { Behavior } from '../Behavior.js';
+import { BehaviorTree } from '../BehaviorTree.js';
+import { TaskStatus } from '../TaskStatus.js';
 
-        constructor(tree: BehaviorTree<T>){
-            super();
+/**
+ * 作为子项运行整个BehaviorTree并返回成功
+ */
+export class BehaviorTreeReference<T> extends Behavior<T> {
+    private _childTree: BehaviorTree<T>;
 
-            this._childTree = tree;
-        }
+    constructor(tree: BehaviorTree<T>) {
+        super();
 
-        public update(context: T): TaskStatus{
-            this._childTree.tick();
+        this._childTree = tree;
+    }
 
-            return TaskStatus.Success;
-        }
+    public update(_context: T): TaskStatus {
+        this._childTree.tick();
+
+        return TaskStatus.Success;
     }
 }

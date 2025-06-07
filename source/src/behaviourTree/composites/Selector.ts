@@ -1,47 +1,88 @@
-module behaviourTree {
+import { Composite } from './Composite.js';
+import { TaskStatus } from '../TaskStatus.js';
+import { AbortTypes, AbortTypesExt } from './AbortTypes.js';
+
+/**
+ * 选择器组合器
+ * 
+ * @description
+ * 类似于逻辑"或"操作，按顺序执行子节点直到找到成功的节点：
+ * - 任何子节点成功时返回成功
+ * - 所有子节点失败时返回失败
+ * - 子节点运行中时返回运行中
+ * 
+ * @template T 上下文类型
+ */
+export class Selector<T> extends Composite<T> {
+    /** 缓存的子节点数量，避免重复访问length属性 */
+    private _childCount: number = 0;
+
+    constructor(abortType: AbortTypes = AbortTypes.None) {
+        super();
+        this.abortType = abortType;
+    }
+
+    public onStart(): void {
+        super.onStart();
+        this._childCount = this._children.length;
+    }
+
+    public update(context: T): TaskStatus {
+        // 检查是否有子节点
+        if (this._childCount === 0) {
+            return TaskStatus.Failure;
+        }
+
+        // 处理条件性中止
+        if (this._currentChildIndex !== 0) {
+            this.handleConditionalAborts(context);
+        }
+
+        // 确保索引有效
+        if (this._currentChildIndex >= this._childCount) {
+            this._currentChildIndex = 0;
+            return TaskStatus.Failure;
+        }
+
+        const current = this._children[this._currentChildIndex]!;
+        const status = current.tick(context);
+
+        // 如果子节点成功或仍在运行，直接返回
+        if (status !== TaskStatus.Failure) {
+            return status;
+        }
+
+        this._currentChildIndex++;
+
+        // 如果已经是最后一个子节点，整个选择器失败
+        if (this._currentChildIndex >= this._childCount) {
+            this._currentChildIndex = 0;
+            return TaskStatus.Failure;
+        }
+
+        return TaskStatus.Running;
+    }
+
     /**
-     * 选择器任务类似于一个 "或 "操作。只要它的一个子任务返回成功，它就会返回成功。
-     * 如果一个子任务返回失败，那么它将依次运行下一个任务。
-     * 如果没有子任务返回成功，那么它将返回失败
+     * 添加子节点时更新缓存
      */
-    export class Selector<T> extends Composite<T>{
-        constructor(abortType: AbortTypes = AbortTypes.None) {
-            super();
+    public addChild(child: import('../Behavior.js').Behavior<T>): void {
+        super.addChild(child);
+        this._childCount = this._children.length;
+    }
 
-            this.abortType = abortType;
+    /**
+     * 处理条件性中止
+     */
+    private handleConditionalAborts(context: T): void {
+        // 检查低优先级任务的状态变化
+        if (this._hasLowerPriorityConditionalAbort) {
+            this.updateLowerPriorityAbortConditional(context, TaskStatus.Failure);
         }
 
-        public update(context: T): TaskStatus {
-            // 首先，如果我们不在第一个子节点身上，我们就处理条件性中止
-            if (this._currentChildIndex != 0)
-                this.handleConditionalAborts(context);
-
-            let current = this._children[this._currentChildIndex];
-            let status = current.tick(context);
-
-            // 如果子节点成功了或者还在跑，就提前返回
-            if (status != TaskStatus.Failure)
-                return status;
-
-            this._currentChildIndex++;
-
-            // 如果子节点再最后一个，这意味着整个事情失败了
-            if (this._currentChildIndex == this._children.length) {
-                // 重置索引，否则下次运行时会崩溃
-                this._currentChildIndex = 0;
-                return TaskStatus.Failure;
-            }
-
-            return TaskStatus.Running;
-        }
-
-        private handleConditionalAborts(context: T) {
-            // 检查任何较低优先级的任务，看它们是否改变为成功
-            if (this._hasLowerPriorityConditionalAbort)
-                this.updateLowerPriorityAbortConditional(context, TaskStatus.Failure);
-
-            if (AbortTypesExt.has(this.abortType, AbortTypes.Self))
-                this.updateSelfAbortConditional(context, TaskStatus.Failure);
+        // 检查自中止条件
+        if (AbortTypesExt.has(this.abortType, AbortTypes.Self)) {
+            this.updateSelfAbortConditional(context, TaskStatus.Failure);
         }
     }
 }

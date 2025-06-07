@@ -1,253 +1,411 @@
-# BehaviourTree、UtilityAI、FSM
-基于ecs-framework开发的AI（BehaviourTree、UtilityAI、FSM）系统，一套已经非常完整的系统。教程较少，可以自行看源代码来学习。
+# BehaviourTree-AI
 
-## 目录结构
+一个高性能的TypeScript AI系统库，包含行为树（Behavior Tree）、实用AI（Utility AI）和有限状态机（FSM）。经过全面的性能优化，适用于游戏开发和复杂AI系统构建。
 
-- src `源目录`
-  - behaviourTree   `行为树主目录`
-    - actions `动作是行为树的节点。比如： 播放动画，触发事件等。`
-    - composites `Composites是行为树中的父节点，他们容纳一个或多个子节点，并以不同的方式执行。`
-    - conditionals `它们由IConditional接口标识。它们会检查游戏世界的某些情况，并返回成功或失败`
-    - decorators `装饰器可以通过各种方式修改子任务的行为，例如： 反转结果，运行知道失败等`
-  - utilityAI `实用AI主目录`
-    - actions `AI执行的操作`
-    - considerations `列出评估和行为清单。计算一个分数，用数字表示Action的有效使用情况。`
-    - reasoners `从附加的Reasoner的事项列表中选择最佳的事项。AI的根源`
-  - core    `egret核心扩展`
-  - test    `示例工程`
-    - utilityActions `实用AI示例目录`
+## ✨ 特性
 
-## 介绍
+- 🌳 **行为树系统** - 完整的行为树实现，支持复合节点、条件节点、装饰器和动作节点
+- 🧠 **实用AI系统** - 基于评分的AI决策系统，支持动态行为选择
+- 🔄 **有限状态机** - 灵活的状态管理系统，支持状态转换和事件处理
+- ⚡ **高性能优化** - 内置时间管理、对象池、内存管理等性能优化功能
+- 🛡️ **类型安全** - 完整的TypeScript类型支持和运行时类型检查
+- 📊 **性能监控** - 内置性能统计和监控工具
+- 🔧 **可配置** - 灵活的配置选项，支持开发和生产环境
 
-### State Machine
-它实现 `状态作为对象` 模式。 StateMachine为每个状态使用单独的类，因此对于更复杂的系统而言，它是更好的选择。
+## 🚀 快速开始
 
-我们开始使用StateMachine来了解上下文的概念。 在编码中，上下文只是用于满足一般约束的类。 在Array<string>中，字符串将是上下文类，即列表所基于的类。 使用所有其他的AI解决方案，您都可以指定上下文类。 它可能是您的敌人类，玩家类或包含与您的AI相关的任何信息（例如玩家，敌人列表，导航信息等）的帮助对象。
+### 安装
 
-这是一个显示用法的简单示例（为简洁起见，省略了State子类）： 
-  
-```ts
-  // 创建一个状态机，该状态机将使用SomeClass类型的对象作为焦点，并具有PatrollingState的初始状态 
-  let machine = new SKStateMachine<SomeClass>( someClass, new PatrollingState() );
-  
-  // 我们现在可以添加任何其他状态 
-  machine.addState(new AttackState());
-  machine.addState(new ChaseState());
-  
-  // 通常在更新对象时调用此方法 
-  machine.update(es.Time.deltaTime);
-  
-  // 改变状态。 状态机将自动创建并缓存该类的实例（在本例中为ChasingState） 
-  machine.changeState<ChasingState>(ChasingState);
+```bash
+npm install @esengine/ai
 ```
 
-### Behavior Trees
-
-行为树由节点树组成。节点可以根据世界状态做出决策并执行操作。它包含一个BehaviorTreeBuilder类，它提供了一个用于设置行为树的API。BehaviorTreeBuilder是一种使行为树减少使用并快速启动的方法。
-
-#### Composites
-组合是行为树中的父节点。 他们有一个或多个子节点，并以不同的方式处理他们。 
-
-- Sequence<T> 一旦其子任务之一返回失败，则返回失败。 如果一个子任务返回成功，它将在树的下一帧顺序运行下一个子节点
-- Selector<T> 一旦其子任务之一返回成功，则返回成功。 如果子任务返回失败，则它将在下一帧顺序运行下一个子任务。 
-- Parallel<T> 运行每个子节点直到子节点返回失败。它不同于Sequence仅在于它在每帧都会运行所有子节点
-- ParallelSelector<T> 同Selector,除了它自身将在每帧都运行所有子节点
-- ParallelSequence<T> 同Sequence,除了它自身将在每帧都运行所有子节点
-- RandomSequence<T> 同Sequence，在执行前将子节点随机打乱后运行
-- RandomSelector<T> 同Selector, 在执行前将子节点随机打乱后运行
-
-#### Conditional
-条件是成功/失败节点。 它们由IConditional接口标识。 他们检查您的游戏世界的某些状况，并返回成功或失败。 它们本质上是特定于游戏的，因此框架仅提供一个开箱即用的通用条件，以及包装Function的辅助条件，因此您不必为每个条件创建单独的类。 
-  
-- RandomProbability<T>: 当随机概率高于指定的成功率时返回成功
-- ExecuteActionConditional<T>: 包装一个Func并未做Conditional执行。用于原型设计和避免为简单的条件创建单独的类。
-
-#### Decoration
-装饰器是具有单个子任务的包装器任务。 他们可以通过多种方式修改子任务的行为，例如反转结果，运行直到失败等。 
-
-- AlwaysFail<T>: 无论子结果如何，总是返回失败
-- AlwaysSuccedd<T>: 无论子结果如何，总是返回成功
-- ConditionalDecorator<T>: 包装条件，并且仅在满足条件时才运行其子项。
-- Repeater<T>: 重复其子任务指定次数
-- UntilFail<T>: 继续执行其子任务，直到返回失败
-- UntilSuccess<T>: 继续执行其子任务，直到返回成功
-- Inverter<T>: 反转子结果
-
-#### Action
-动作是行为树的叶子节点。 例如播放动画，触发事件等。 
-
-- ExecuteAction<T>: 包装一个Func并将其作为动作执行。
-- WaitAction<T>： 等待指定的时间
-- LogAction<T>：将字符串记录到控制台用于调试。
-- BehaviorTreeReference<T>:运行另一个行为树
-
-### 使用文档
+### 基本使用
 
 ```typescript
-class AiComponent{
-    private _tree: BehaviorTree<AiComponent>;
-    public state: State = new State();
-    private _distanceToNextLocation: number = 10;
-    public update(){
-        if (this._tree)
-            this._tree.tick();
-    }
+import { BehaviorTreeBuilder, TaskStatus } from '@esengine/ai';
 
-    public start(){
-        let builder = BehaviorTreeBuilder.begin(this);
-
-        builder.selector(AbortTypes.Self);
-
-        // 睡觉最重要
-        builder.conditionalDecoratorR(m => m.state.fatigue >= State.MAX_FATIGUE, false);
-        builder.sequence(AbortTypes.LowerPriority)
-            .logAction("-- 累了,准备回家")
-            .action(m => m.goToLocation(Locate.Home))
-            .logAction("-- 准备上床")
-            .action(m => m.sleep())
-            .endComposite();
-
-        // 喝水第二重要
-        builder.conditionalDecoratorR(m => m.state.thirst >= State.MAX_THIRST, false);
-        builder.sequence(AbortTypes.LowerPriority)
-            .logAction("-- 渴了! 准备喝水")
-            .action(m => m.goToLocation(Locate.Saloon))
-            .logAction("-- 开始喝水")
-            .action(m => m.drink())
-            .endComposite();
-
-        // 存钱第三重要
-        builder.conditionalDecoratorR(m => m.state.gold >= State.MAX_GOLD, false);
-        builder.sequence(AbortTypes.LowerPriority)
-            .logAction( "--- 背包满了，准备去银行存钱." )
-            .action( m => m.goToLocation( Locate.Bank ) )
-            .logAction( "--- 开始存钱!" )
-            .action( m => m.depositGold() )
-            .endComposite();
-
-        // 赚钱最后
-        builder.sequence()
-            .action(m => m.goToLocation(Locate.Mine))
-            .logAction("-- 开始挖矿！")
-            .action(m => m.digForGold())
-            .endComposite();
-
-        builder.endComposite();
-
-        this._tree = builder.build();
-    }
-
-    private digForGold(): TaskStatus{
-        console.log(`开始金币增加: ${this.state.gold}.`);
-        this.state.gold++;
-        this.state.fatigue++;
-        this.state.thirst++;
-
-        if( this.state.gold >= State.MAX_GOLD )
-            return TaskStatus.Failure;
-
-        return TaskStatus.Running;
-    }
-
-    private drink(): TaskStatus{
-        console.log(`开始喝水, 口渴程度: ${this.state.thirst}`);
-
-        if( this.state.thirst == 0 )
-            return TaskStatus.Success;
-
-        this.state.thirst--;
-        return TaskStatus.Running;
-    }
-
-    private sleep(): TaskStatus{
-        console.log(`开始睡觉, 当前疲惫值: ${this.state.fatigue}`);
-
-        if (this.state.fatigue == 0)
-            return TaskStatus.Success;
+// 创建一个简单的AI角色
+class AICharacter {
+    public health: number = 100;
+    public energy: number = 100;
+    
+    // 创建行为树
+    createBehaviorTree() {
+        const builder = BehaviorTreeBuilder.begin(this);
         
-        this.state.fatigue--;
-        return TaskStatus.Running;
+        builder.selector()
+            // 如果生命值低，寻找治疗
+            .conditionalDecorator(ai => ai.health < 30)
+            .sequence()
+                .logAction("寻找治疗")
+                .action(ai => ai.findHealing())
+                .endComposite()
+            
+            // 否则继续巡逻
+            .sequence()
+                .action(ai => ai.patrol())
+                .waitAction(2.0)
+                .endComposite()
+            .endComposite();
+            
+        return builder.build();
     }
+    
+    findHealing(): TaskStatus {
+        this.health += 10;
+        return this.health >= 100 ? TaskStatus.Success : TaskStatus.Running;
+    }
+    
+    patrol(): TaskStatus {
+        console.log("正在巡逻...");
+        this.energy -= 1;
+        return TaskStatus.Success;
+    }
+}
+```
 
-    private goToLocation(location: Locate): TaskStatus{
-        console.log(`前往目的地: ${location}. 距离: ${this._distanceToNextLocation}`);
+## 📚 详细教程
 
-        if (location != this.state.currentLocation){
-            this._distanceToNextLocation--; 
-            if (this._distanceToNextLocation == 0){
-                this.state.fatigue ++;
-                this.state.currentLocation = location;
-                this._distanceToNextLocation = Math.floor(Random.range(2, 8));
-                return TaskStatus.Success;
-            }
+### 1. 行为树系统
 
-            return TaskStatus.Running;
+行为树是一种用于AI决策的树形结构，由不同类型的节点组成。
+
+#### 复合节点（Composites）
+
+复合节点控制子节点的执行流程：
+
+```typescript
+import { BehaviorTreeBuilder, AbortTypes } from '@esengine/ai';
+
+// Sequence - 顺序执行，任一失败则整体失败
+builder.sequence()
+    .action(ai => ai.moveToTarget())
+    .action(ai => ai.attack())
+    .endComposite();
+
+// Selector - 选择执行，任一成功则整体成功
+builder.selector()
+    .action(ai => ai.tryMeleeAttack())
+    .action(ai => ai.tryRangedAttack())
+    .action(ai => ai.retreat())
+    .endComposite();
+
+// Parallel - 并行执行所有子节点
+builder.parallel()
+    .action(ai => ai.move())
+    .action(ai => ai.lookAround())
+    .endComposite();
+```
+
+#### 条件节点（Conditionals）
+
+条件节点用于检查游戏状态：
+
+```typescript
+// 自定义条件
+class HealthCheckConditional extends Conditional<AICharacter> {
+    private minHealth: number;
+    
+    constructor(minHealth: number) {
+        super();
+        this.minHealth = minHealth;
+    }
+    
+    update(context: AICharacter): TaskStatus {
+        return context.health >= this.minHealth ? 
+            TaskStatus.Success : TaskStatus.Failure;
+    }
+}
+
+// 使用条件装饰器
+builder.conditionalDecorator(ai => ai.health > 50)
+    .action(ai => ai.aggressiveAttack())
+    .endComposite();
+```
+
+#### 装饰器节点（Decorators）
+
+装饰器修改子节点的行为：
+
+```typescript
+// 重复执行直到失败
+builder.untilFail()
+    .action(ai => ai.patrol())
+    .endComposite();
+
+// 反转结果
+builder.inverter()
+    .conditional(ai => ai.isEnemyNear())
+    .endComposite();
+
+// 重复指定次数
+builder.repeater(3)
+    .action(ai => ai.shoot())
+    .endComposite();
+```
+
+#### 中止类型（Abort Types）
+
+支持动态行为中止：
+
+```typescript
+builder.selector(AbortTypes.Self)
+    // 高优先级：逃跑
+    .conditionalDecorator(ai => ai.health < 20)
+    .sequence(AbortTypes.LowerPriority)
+        .action(ai => ai.flee())
+        .endComposite()
+    
+    // 中优先级：攻击
+    .conditionalDecorator(ai => ai.canSeeEnemy())
+    .sequence(AbortTypes.LowerPriority)
+        .action(ai => ai.attack())
+        .endComposite()
+    
+    // 低优先级：巡逻
+    .action(ai => ai.patrol())
+    .endComposite();
+```
+
+### 2. 实用AI系统
+
+实用AI基于评分系统进行决策：
+
+```typescript
+import { UtilityAI, Consideration, Action } from '@esengine/ai';
+
+class AttackAction extends Action<AICharacter> {
+    execute(context: AICharacter): void {
+        context.attack();
+    }
+}
+
+class HealthConsideration extends Consideration<AICharacter> {
+    getScore(context: AICharacter): number {
+        // 生命值越低，攻击欲望越低
+        return context.health / 100;
+    }
+}
+
+class EnemyDistanceConsideration extends Consideration<AICharacter> {
+    getScore(context: AICharacter): number {
+        const distance = context.getDistanceToEnemy();
+        // 距离越近，攻击欲望越高
+        return Math.max(0, 1 - distance / 10);
+    }
+}
+
+// 创建实用AI
+const utilityAI = new UtilityAI<AICharacter>();
+
+const attackAction = new AttackAction();
+attackAction.addConsideration(new HealthConsideration());
+attackAction.addConsideration(new EnemyDistanceConsideration());
+
+utilityAI.addAction(attackAction);
+```
+
+### 3. 有限状态机
+
+状态机用于管理AI的不同状态：
+
+```typescript
+import { StateMachine, State } from '@esengine/ai';
+
+class PatrolState extends State<AICharacter> {
+    update(context: AICharacter): void {
+        context.patrol();
+        
+        if (context.canSeeEnemy()) {
+            context.stateMachine.changeState(CombatState);
         }
-
-        return TaskStatus.Success;
-    }
-
-    private depositGold(): TaskStatus{
-        this.state.goldInBank += this.state.gold;
-        this.state.gold = 0;
-
-        console.log(`存钱进入银行. 当前存款 ${this.state.goldInBank}`);
-
-        return TaskStatus.Success;
     }
 }
-```
 
-```typescript
-class State{
-    public static MAX_FATIGUE: number = 10;
-    public static MAX_GOLD = 8;
-    public static MAX_THIRST = 5;
-
-    public fatigue: number = 0;
-    public thirst: number = 0;
-    public gold: number = 0;
-    public goldInBank: number = 0;
-    public currentLocation: Locate = Locate.Home;
+class CombatState extends State<AICharacter> {
+    update(context: AICharacter): void {
+        context.attack();
+        
+        if (!context.canSeeEnemy()) {
+            context.stateMachine.changeState(PatrolState);
+        }
+    }
 }
 
-enum Locate{
-    Home,
-    InTransit,
-    Mine,
-    Saloon,
-    Bank
+// 创建状态机
+const stateMachine = new StateMachine<AICharacter>(character, new PatrolState());
+stateMachine.addState(new CombatState());
+```
+
+## ⚡ 性能优化功能
+
+### 时间管理器
+
+高效的时间管理系统：
+
+```typescript
+import { TimeManager } from '@esengine/ai';
+
+// 启用时间池化
+TimeManager.enablePooling(true);
+
+// 设置时间缩放
+TimeManager.setTimeScale(1.5);
+
+// 获取优化的时间
+const currentTime = TimeManager.getCurrentTime();
+const deltaTime = TimeManager.getDeltaTime();
+```
+
+### 高级对象池
+
+减少垃圾回收压力：
+
+```typescript
+import { AdvancedObjectPool } from '@esengine/ai';
+
+// 创建对象池
+const bulletPool = new AdvancedObjectPool(
+    () => new Bullet(),  // 创建函数
+    bullet => bullet.reset(),  // 重置函数
+    { 
+        initialSize: 50,
+        maxSize: 200,
+        priority: 'high'
+    }
+);
+
+// 获取对象
+const bullet = bulletPool.get();
+
+// 归还对象
+bulletPool.release(bullet);
+```
+
+### 错误处理系统
+
+可配置的错误处理：
+
+```typescript
+import { ErrorHandler, ErrorLevel } from '@esengine/ai';
+
+// 设置错误级别
+ErrorHandler.setLevel(ErrorLevel.Production);
+
+// 启用性能监控
+ErrorHandler.enablePerformanceMonitoring(true);
+
+// 使用装饰器进行自动错误处理
+class MyAI {
+    @ErrorHandler.handleErrors()
+    public complexOperation(): void {
+        // 复杂的AI逻辑
+    }
 }
 ```
 
-开始行为树
+### 事件管理器
+
+防止内存泄漏的事件系统：
 
 ```typescript
-this.aiComponent = new AiComponent();
-this.aiComponent.start();
+import { EventManager } from '@esengine/ai';
+
+const eventManager = new EventManager();
+
+// 添加监听器
+const listenerId = eventManager.on('enemy-spotted', (data) => {
+    console.log('发现敌人:', data);
+});
+
+// 自动清理监听器
+eventManager.on('player-died', callback, {
+    once: true,  // 只执行一次
+    ttl: 5000   // 5秒后自动移除
+});
+
+// 手动移除监听器
+eventManager.off('enemy-spotted', listenerId);
 ```
 
-最后还需要对aiComponent进行派发update事件更新
+## 🔧 配置选项
+
+### 性能配置
 
 ```typescript
-this.aiComponent.update();
-```
-  
-### Utility Based AI
-游戏效用理论。 最复杂的AI解决方案。 最适合在其计分系统最有效的动态环境中使用。 基于实用程序的AI更适用于AI可以采取大量潜在竞争行为的情况，例如在RTS中。
-  
-#### Reasoner
-从附加在Reasoner上的考虑因素列表中选择最佳考虑因素。一个实用AI的根。
-  
-#### Consideration
-拥有一个评估和一个行动的列表。计算一个分数，用数字表示其行动的效用。
-  
-#### Appraisal
-可以将一个或多个评估添加到Appraisal中。 他们计算并返回其使用代价的得分。
-  
-#### Action
-当一个特定的考虑因素被选中时，AI执行的行动。
-  
-## 依赖库
+import { PerformanceConfig } from '@esengine/ai';
 
-[ecs-framework](https://github.com/esengine/ecs-framework)
+PerformanceConfig.set({
+    enableObjectPooling: true,
+    enableTimePooling: true,
+    maxPoolSize: 1000,
+    enablePerformanceMonitoring: true,
+    logLevel: 'warn'
+});
+```
+
+### 开发模式配置
+
+```typescript
+import { DevConfig } from '@esengine/ai';
+
+// 开发模式
+DevConfig.enableDebugMode(true);
+DevConfig.enableVerboseLogging(true);
+DevConfig.enableTypeChecking(true);
+
+// 生产模式
+DevConfig.enableProductionMode();
+```
+
+## 📊 性能监控
+
+### 获取性能统计
+
+```typescript
+import { PerformanceMonitor } from '@esengine/ai';
+
+// 获取行为树性能统计
+const btStats = PerformanceMonitor.getBehaviorTreeStats();
+console.log(`平均执行时间: ${btStats.averageExecutionTime}ms`);
+
+// 获取对象池统计
+const poolStats = PerformanceMonitor.getObjectPoolStats();
+console.log(`池命中率: ${poolStats.hitRate}%`);
+
+// 获取内存使用情况
+const memoryStats = PerformanceMonitor.getMemoryStats();
+console.log(`内存使用: ${memoryStats.usedMemory}MB`);
+```
+
+## 🎯 最佳实践
+
+### 1. 行为树设计
+
+- 保持树的深度合理（建议不超过6层）
+- 使用条件装饰器进行早期退出
+- 合理使用中止类型避免不必要的计算
+- 将复杂逻辑拆分为多个简单节点
+
+### 2. 性能优化
+
+- 在生产环境中禁用调试日志
+- 使用对象池管理频繁创建的对象
+- 避免在update方法中进行复杂计算
+- 使用时间管理器减少时间计算开销
+
+### 3. 内存管理
+
+- 及时清理事件监听器
+- 使用弱引用避免循环引用
+- 定期清理不再使用的对象池
+- 监控内存使用情况
+
+## 🤝 贡献
+
+欢迎提交Issue和Pull Request！
+
+## 📄 许可证
+
+MIT License - 详见 [LICENSE](./LICENSE) 文件

@@ -1,125 +1,189 @@
-module behaviourTree {
+import { Behavior } from '../Behavior.js';
+import { TaskStatus } from '../TaskStatus.js';
+import { AbortTypes, AbortTypesExt } from './AbortTypes.js';
+import { isIConditional } from '../conditionals/IConditional.js';
+
+/**
+ * 复合节点基类
+ * 
+ * 所有复合节点（如Sequence、Selector等）都必须继承此类。
+ * 提供子节点管理和中止类型处理的基础功能。
+ * 
+ * @template T 上下文类型
+ * @abstract
+ */
+export abstract class Composite<T> extends Behavior<T> {
+    /** 中止类型，决定节点在何种情况下会被中止 */
+    public abortType: AbortTypes = AbortTypes.None;
+
+    /** 子节点数组 */
+    protected _children: Array<Behavior<T>> = new Array<Behavior<T>>();
+    
+    /** 是否存在低优先级条件中止 */
+    protected _hasLowerPriorityConditionalAbort: boolean = false;
+    
+    /** 当前执行的子节点索引 */
+    protected _currentChildIndex: number = 0;
+
     /**
-     * 任何复合节点必须子类化这个。为子节点和助手提供存储，以处理AbortTypes。
+     * 使节点及其所有子节点无效
+     * 
+     * 重写父类方法，递归使所有子节点无效
      */
-    export abstract class Composite<T> extends Behavior<T>{
-        public abortType: AbortTypes = AbortTypes.None;
+    public invalidate(): void {
+        super.invalidate();
 
-        protected _children: Array<Behavior<T>> = new Array<Behavior<T>>();
-        protected _hasLowerPriorityConditionalAbort: boolean = false;
-        protected _currentChildIndex: number = 0;
+        const childrenLength = this._children.length;
+        for (let i = 0; i < childrenLength; i++) {
+            this._children[i]!.invalidate();
+        }
+    }
 
-        public invalidate() {
-            super.invalidate();
+    /**
+     * 节点开始执行时的初始化
+     * 
+     * 检查是否存在低优先级条件中止，并重置当前子节点索引
+     */
+    public onStart(): void {
+        // 检查子节点中是否存在低优先级条件中止
+        this._hasLowerPriorityConditionalAbort = this.hasLowerPriorityConditionalAbortInChildren();
+        this._currentChildIndex = 0;
+    }
 
-            for (let i = 0; i < this._children.length; i++) {
-                this._children[i].invalidate();
+    /**
+     * 节点执行结束时的清理
+     * 
+     * 使所有子节点无效，为下一次执行做准备
+     */
+    public onEnd(): void {
+        // 使所有子节点无效，为下一帧做准备
+        const childrenLength = this._children.length;
+        for (let i = 0; i < childrenLength; i++) {
+            this._children[i]!.invalidate();
+        }
+    }
+
+    /**
+     * 检查子节点中是否存在低优先级条件中止
+     * 
+     * 遍历所有子节点，查找设置了LowerPriority中止类型且第一个子节点为条件节点的复合节点
+     * 
+     * @returns 如果存在低优先级条件中止则返回true，否则返回false
+     * @private
+     */
+    private hasLowerPriorityConditionalAbortInChildren(): boolean {
+        for (let i = 0; i < this._children.length; i++) {
+            // 检查是否为设置了中止类型的复合节点
+            let composite = this._children[i] as Composite<T>;
+            if (composite != null && AbortTypesExt.has(composite.abortType, AbortTypes.LowerPriority)) {
+                // 确保第一个子节点是条件节点
+                if (composite.isFirstChildConditional())
+                    return true;
             }
         }
 
-        public onStart() {
-            // 较低优先级的中止发生在下一级，所以我们在这里检查是否有
-            this._hasLowerPriorityConditionalAbort = this.hasLowerPriorityConditionalAbortInChildren();
-            this._currentChildIndex = 0;
-        }
+        return false;
+    }
 
-        public onEnd() {
-            // 我们已经做好了使我们的子节点无效的准备，使他们再下一帧做好准备 
-            for (let i = 0; i < this._children.length; i++) {
-                this._children[i].invalidate();
+    /**
+     * 添加子节点
+     * 
+     * @param child 要添加的子节点
+     */
+    public addChild(child: Behavior<T>): void {
+        this._children.push(child);
+    }
+
+    /**
+     * 检查第一个子节点是否为条件节点
+     * 
+     * 用于处理条件性中止逻辑
+     * 
+     * @returns 如果第一个子节点是条件节点则返回true，否则返回false
+     */
+    public isFirstChildConditional(): boolean {
+        return isIConditional(this._children[0]);
+    }
+
+    /**
+     * 更新自中止条件节点
+     * 
+     * 检查当前索引之前的条件节点状态变化，支持自中止功能。
+     * 当条件节点状态不符合预期时，会重置当前索引并使后续子节点无效。
+     * 
+     * @param context 执行上下文
+     * @param statusCheck 期望的状态值
+     * @protected
+     */
+    protected updateSelfAbortConditional(context: T, statusCheck: TaskStatus): void {
+        // 检查当前索引之前的条件节点
+        for (let i = 0; i < this._currentChildIndex; i++) {
+            const child = this._children[i]!;
+            if (!isIConditional(child)) {
+                continue;
             }
-        }
+            
+            const status = this.updateConditionalNode(context, child);
+            if (status !== statusCheck) {
+                this._currentChildIndex = i;
 
-        /**
-         * 检查复合体的子代，看是否有具有LowerPriority AbortType的复合体
-         */
-        private hasLowerPriorityConditionalAbortInChildren(): boolean {
-            for (let i = 0; i < this._children.length; i++) {
-                // 检查是否有一个设置了中止类型的复合体
-                let composite = this._children[i] as Composite<T>;
-                if (composite != null && AbortTypesExt.has(composite.abortType, AbortTypes.LowerPriority)) {
-                    // 现在确保第一个子节点是一个条件性的
-                    if (composite.isFirstChildConditional())
-                        return true;
+                // 中止时使后续子节点无效
+                const childrenLength = this._children.length;
+                for (let j = i; j < childrenLength; j++) {
+                    this._children[j]!.invalidate();
                 }
-            }
-
-            return false;
-        }
-
-        /**
-         * 为这个复合体添加一个子节点
-         */
-        public addChild(child: Behavior<T>) {
-            this._children.push(child);
-        }
-
-        /**
-         * 如果一个复合体的第一个子节点是一个条件体，返回true。用来处理条件性中止
-         */
-        public isFirstChildConditional(): boolean {
-            return isIConditional(this._children[0]);
-        }
-
-        /**
-         * 检查任何IConditional的子代，看它们是否已经改变了状态
-         */
-        protected updateSelfAbortConditional(context: T, statusCheck: TaskStatus) {
-            // 检查任何IConditional的子任务，看它们是否改变了状态
-            for (let i = 0; i < this._currentChildIndex; i++) {
-
-                let child = this._children[i];
-                if (!isIConditional(child))
-                    continue;
-                
-                let status = this.updateConditionalNode(context, child);
-                if (status != statusCheck) {
-                    this._currentChildIndex = i;
-
-                    // 我们有一个中止，所以我们使子节点无效，所以他们被重新评估
-                    for (let j = i; j < this._children.length; j++)
-                        this._children[j].invalidate();
-                    break;
-                }
+                break;
             }
         }
+    }
 
-        /**
-         * 检查任何具有LowerPriority AbortType和Conditional作为第一个子代的组合体。
-         * 如果它找到一个，它将执行条件，如果状态不等于 statusCheck，_currentChildIndex将被更新，即当前运行的Action将被中止。
-         */
-        protected updateLowerPriorityAbortConditional(context: T, statusCheck: TaskStatus) {
-            // 检查任何较低优先级的任务，看它们是否改变了状态
-            for (let i = 0; i < this._currentChildIndex; i++) {
-                let composite = this._children[i] as Composite<T>;
-                if (composite != null && AbortTypesExt.has(composite.abortType, AbortTypes.LowerPriority)) {
-                    // 现在我们只得到条件的状态（更新而不是执行），看看它是否发生了变化，并对条件装饰器加以注意
-                    let child = composite._children[0];
-                    let status = this.updateConditionalNode(context, child);
-                    if (status != statusCheck) {
+    /**
+     * 更新低优先级中止条件节点
+     * 
+     * 检查具有低优先级中止类型的组合节点，当其条件节点状态发生变化时
+     * 执行中止操作。
+     * 
+     * @param context 执行上下文
+     * @param statusCheck 期望的状态值
+     * @protected
+     */
+    protected updateLowerPriorityAbortConditional(context: T, statusCheck: TaskStatus): void {
+        // 检查当前索引之前的低优先级任务
+        for (let i = 0; i < this._currentChildIndex; i++) {
+            const composite = this._children[i] as Composite<T>;
+            if (composite && AbortTypesExt.has(composite.abortType, AbortTypes.LowerPriority)) {
+                // 获取条件节点的状态
+                const child = composite._children[0];
+                if (child) {
+                    const status = this.updateConditionalNode(context, child);
+                    if (status !== statusCheck) {
                         this._currentChildIndex = i;
 
-                        // 我们有一个中止，所以我们使子节点无效，所以他们被重新评估
-                        for (let j = i; j < this._children.length; j++) 
-                            this._children[j].invalidate();
+                        // 中止时使后续子节点无效
+                        const childrenLength = this._children.length;
+                        for (let j = i; j < childrenLength; j++) {
+                            this._children[j]!.invalidate();
+                        }
                         
                         break;
                     }
                 }
             }
         }
+    }
 
-        /**
-         * 帮助器，用于获取一个条件或一个条件装饰器的任务状态
-         * @param context 
-         * @param node 
-         * @returns 
-         */
-        private updateConditionalNode(context: T, node: Behavior<T>): TaskStatus {
-            if (node instanceof ConditionalDecorator)
-                return (node as ConditionalDecorator<T>).executeConditional(context, true);
-            else
-                return node.update(context);
-        }
+    /**
+     * 更新条件节点状态
+     * 
+     * 辅助方法，用于获取条件节点或条件装饰器的任务状态
+     * 
+     * @param context 执行上下文
+     * @param node 要更新的节点
+     * @returns 节点的执行状态
+     * @private
+     */
+    private updateConditionalNode(context: T, node: Behavior<T>): TaskStatus {
+        // 直接调用节点的update方法获取状态
+        return node.update(context);
     }
 }

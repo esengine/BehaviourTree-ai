@@ -1,16 +1,19 @@
-module utilityAI {
-    /**
-     * 包装Action以用作IAction而无需创建新类
-     */
-    export class ActionExecutor<T> implements IAction<T>{
-        private _action: Function;
+import { IAction } from './IAction.js';
+import { Reasoner } from '../reasoners/Reasoner.js';
 
-        public constructor(action: Function){
-            this._action = action;
-        }
+/**
+ * 包装一个Reasoner，以便它可以作为一个Action使用
+ */
+export class ActionExecutor<T> implements IAction<T> {
+    private _reasoner: Reasoner<T>;
 
-        public execute(context: T){
-            this._action(context);
-        }
+    public constructor(reasoner: Reasoner<T>) {
+        this._reasoner = reasoner;
+    }
+
+    public execute(context: T): void {
+        let action = this._reasoner.select(context);
+        if (action != null)
+            action.execute(context);
     }
 }
