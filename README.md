@@ -11,6 +11,7 @@
 - 🛡️ **类型安全** - 完整的TypeScript类型支持和运行时类型检查
 - 📊 **性能监控** - 内置性能统计和监控工具
 - 🔧 **可配置** - 灵活的配置选项，支持开发和生产环境
+- 🎯 **ECS集成** - 完整的ECS框架集成支持，提供组件、系统和预制模板
 
 ## 🚀 快速开始
 
@@ -64,6 +65,36 @@ class AICharacter {
     }
 }
 ```
+
+### ECS框架集成
+
+与[@esengine/ecs-framework](https://www.npmjs.com/package/@esengine/ecs-framework)完美集成：
+
+```typescript
+import { Scene, Entity, Component } from '@esengine/ecs-framework';
+import { BehaviorTreeSystem, BehaviorTreeFactory } from '@esengine/ai/ecs-integration';
+
+// 创建场景和系统
+const scene = new Scene();
+const behaviorTreeSystem = new BehaviorTreeSystem();
+scene.addEntityProcessor(behaviorTreeSystem);
+
+// 创建AI实体
+const entity = new Entity("AI", 1);
+BehaviorTreeFactory.addBehaviorTreeToEntity(
+    entity,
+    (builder) => builder.action((entity) => {
+        console.log("AI正在思考...");
+        return TaskStatus.Success;
+    }),
+    { debugMode: true }
+);
+
+scene.addEntity(entity);
+scene.update(); // 在游戏循环中调用
+```
+
+详细ECS集成文档请查看：[ecs-integration/README.md](./ecs-integration/README.md)
 
 ## 📚 详细教程
 

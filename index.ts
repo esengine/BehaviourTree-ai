@@ -13,7 +13,18 @@ export * as FSM from './fsm/index';
 // 效用AI模块
 export * as UtilityAI from './utilityAI/index';
 
+// ECS集成模块
+export * as ECSIntegration from './ecs-integration/index';
+
 // 默认导出（向后兼容）
 export { BehaviorTree, BehaviorTreeBuilder, TaskStatus } from './behaviourTree/index';
 export { StateMachine, State } from './fsm/index';
-export { UtilityAI as UtilityAICore } from './utilityAI/index'; 
+export { UtilityAI as UtilityAICore } from './utilityAI/index';
+
+// ECS集成便捷导出
+export { 
+    BehaviorTreeComponent, 
+    BehaviorTreeSystem, 
+    ECSBehaviorTreeBuilder, 
+    BehaviorTreeFactory 
+} from './ecs-integration/index'; 
