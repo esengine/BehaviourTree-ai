@@ -22,12 +22,12 @@ export class ConditionalDecorator<T> extends Decorator<T> implements IConditiona
         this._shouldReevaluate = shouldReevalute;
     }
 
-    public invalidate() {
+    public override invalidate() {
         super.invalidate();
         this._conditionalStatus = TaskStatus.Invalid;
     }
 
-    public onStart() {
+    public override onStart() {
         this._conditionalStatus = TaskStatus.Invalid;
     }
 

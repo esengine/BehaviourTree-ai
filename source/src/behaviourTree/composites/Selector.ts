@@ -14,7 +14,7 @@ import { AbortTypes, AbortTypesExt } from './AbortTypes.js';
  * @template T 上下文类型
  */
 export class Selector<T> extends Composite<T> {
-    /** 缓存的子节点数量，避免重复访问length属性 */
+    /** 缓存的子节点数量，避免重复访问length属性*/
     private _childCount: number = 0;
 
     constructor(abortType: AbortTypes = AbortTypes.None) {
@@ -22,7 +22,7 @@ export class Selector<T> extends Composite<T> {
         this.abortType = abortType;
     }
 
-    public onStart(): void {
+    public override onStart(): void {
         super.onStart();
         this._childCount = this._children.length;
     }
@@ -66,7 +66,7 @@ export class Selector<T> extends Composite<T> {
     /**
      * 添加子节点时更新缓存
      */
-    public addChild(child: import('../Behavior.js').Behavior<T>): void {
+    public override addChild(child: import('../Behavior.js').Behavior<T>): void {
         super.addChild(child);
         this._childCount = this._children.length;
     }
@@ -86,3 +86,4 @@ export class Selector<T> extends Composite<T> {
         }
     }
 }
+

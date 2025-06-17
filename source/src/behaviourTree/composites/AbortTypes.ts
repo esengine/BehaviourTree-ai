@@ -1,6 +1,6 @@
 export enum AbortTypes {
     /**
-     * 没有中止类型。 即使其他条件更改了状态，当前操作也将始终运行 
+     * 没有中止类型。即使其他条件更改了状态，当前操作也将始终运行 
      */
     None = 0,
     /**
@@ -25,3 +25,4 @@ export class AbortTypesExt {
         return (self & check) == check;
     }
 }
+

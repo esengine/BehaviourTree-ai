@@ -74,7 +74,7 @@ export class WaitAction<T> extends Behavior<T> {
         this._useExternalTime = useExternalTime;
     }
 
-    public onStart(): void {
+    public override onStart(): void {
         this._elapsedTime = 0;
         this._lastUpdateTime = performance.now() / 1000;
     }

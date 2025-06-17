@@ -72,7 +72,7 @@ export class Repeater<T> extends Decorator<T> {
         this.count = value ? -1 : Math.max(1, this.count);
     }
 
-    public onStart(): void {
+    public override onStart(): void {
         this._iterationCount = 0;
         this._lastChildStatus = TaskStatus.Invalid;
     }

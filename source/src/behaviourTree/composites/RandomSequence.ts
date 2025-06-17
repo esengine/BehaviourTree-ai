@@ -22,7 +22,7 @@ import { AbortTypes } from './AbortTypes.js';
  * ```
  */
 export class RandomSequence<T> extends Sequence<T> {
-    /** 是否在每次重新开始时都重新洗牌 */
+    /** 是否在每次重新开始时都重新洗牌*/
     private _reshuffleOnRestart: boolean;
     
     /** 原始子节点顺序的备份 */
@@ -42,7 +42,7 @@ export class RandomSequence<T> extends Sequence<T> {
      * 节点开始时的处理
      * 随机打乱子节点顺序
      */
-    public onStart(): void {
+    public override onStart(): void {
         // 备份原始顺序（仅在第一次时）
         if (this._originalOrder === null && this._children.length > 0) {
             this._originalOrder = [...this._children];
@@ -66,7 +66,7 @@ export class RandomSequence<T> extends Sequence<T> {
      * 重置节点状态
      * 如果启用了reshuffleOnRestart，会在下次开始时重新洗牌
      */
-    public invalidate(): void {
+    public override invalidate(): void {
         super.invalidate();
         
         // 如果不需要每次重启都洗牌，恢复原始顺序
@@ -110,8 +110,9 @@ export class RandomSequence<T> extends Sequence<T> {
             try {
                 ArrayExt.shuffle(this._children);
             } catch (error) {
-                console.error('RandomSequence: 手动洗牌时发生错误:', error);
+                console.error('RandomSequence: 手动洗牌时发生错误', error);
             }
         }
     }
 }
+

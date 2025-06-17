@@ -13,10 +13,10 @@ import { isIConditional } from '../conditionals/IConditional.js';
  * @abstract
  */
 export abstract class Composite<T> extends Behavior<T> {
-    /** 中止类型，决定节点在何种情况下会被中止 */
+    /** 中止类型，决定节点在何种情况下会被中止*/
     public abortType: AbortTypes = AbortTypes.None;
 
-    /** 子节点数组 */
+    /** 子节点数组*/
     protected _children: Array<Behavior<T>> = new Array<Behavior<T>>();
     
     /** 是否存在低优先级条件中止 */
@@ -30,7 +30,7 @@ export abstract class Composite<T> extends Behavior<T> {
      * 
      * 重写父类方法，递归使所有子节点无效
      */
-    public invalidate(): void {
+    public override invalidate(): void {
         super.invalidate();
 
         const childrenLength = this._children.length;
@@ -44,7 +44,7 @@ export abstract class Composite<T> extends Behavior<T> {
      * 
      * 检查是否存在低优先级条件中止，并重置当前子节点索引
      */
-    public onStart(): void {
+    public override onStart(): void {
         // 检查子节点中是否存在低优先级条件中止
         this._hasLowerPriorityConditionalAbort = this.hasLowerPriorityConditionalAbortInChildren();
         this._currentChildIndex = 0;
@@ -55,7 +55,7 @@ export abstract class Composite<T> extends Behavior<T> {
      * 
      * 使所有子节点无效，为下一次执行做准备
      */
-    public onEnd(): void {
+    public override onEnd(): void {
         // 使所有子节点无效，为下一帧做准备
         const childrenLength = this._children.length;
         for (let i = 0; i < childrenLength; i++) {
@@ -187,3 +187,4 @@ export abstract class Composite<T> extends Behavior<T> {
         return node.update(context);
     }
 }
+

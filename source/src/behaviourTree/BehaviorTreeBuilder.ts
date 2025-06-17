@@ -74,7 +74,7 @@ export class BehaviorTreeBuilder<T> {
 
     public action(func: (t: T) => TaskStatus): BehaviorTreeBuilder<T> {
         if (this._parentNodeStack.length == 0) {
-            throw new Error("无法创建无嵌套的动作节点, 它必须是一个叶节点");
+            throw new Error("无法创建无嵌套的动作节点，它必须是一个叶节点");
         }
         return this.setChildOnParent(new ExecuteAction<T>(func));
     }
@@ -85,7 +85,7 @@ export class BehaviorTreeBuilder<T> {
 
     public conditional(func: (t: T) => TaskStatus): BehaviorTreeBuilder<T> {
         if (this._parentNodeStack.length == 0) {
-            throw new Error("无法创建无嵌套的条件节点, 它必须是一个叶节点");
+            throw new Error("无法创建无嵌套的条件节点，它必须是一个叶节点");
         }
         return this.setChildOnParent(new ExecuteActionConditional<T>(func));
     }
@@ -96,21 +96,21 @@ export class BehaviorTreeBuilder<T> {
 
     public logAction(text: string): BehaviorTreeBuilder<T> {
         if (this._parentNodeStack.length == 0) {
-            throw new Error("无法创建无嵌套的动作节点, 它必须是一个叶节点");
+            throw new Error("无法创建无嵌套的动作节点，它必须是一个叶节点");
         }
         return this.setChildOnParent(new LogAction<T>(text));
     }
 
     public waitAction(waitTime: number): BehaviorTreeBuilder<T> {
         if (this._parentNodeStack.length == 0) {
-            throw new Error("无法创建无嵌套的动作节点, 它必须是一个叶节点");
+            throw new Error("无法创建无嵌套的动作节点，它必须是一个叶节点");
         }
         return this.setChildOnParent(new WaitAction<T>(waitTime));
     }
 
     public subTree(subTree: BehaviorTree<T>): BehaviorTreeBuilder<T> {
         if (this._parentNodeStack.length == 0) {
-            throw new Error("无法创建无嵌套的动作节点, 它必须是一个叶节点");
+            throw new Error("无法创建无嵌套的动作节点，它必须是一个叶节点");
         }
         return this.setChildOnParent(new BehaviorTreeReference<T>(subTree));
     }
