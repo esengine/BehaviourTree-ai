@@ -4,8 +4,8 @@
     "module": "ES2020",
     "moduleResolution": "node",
     "lib": ["ES2020", "DOM"],
-    "outDir": "./dist",
-    "rootDir": "./src",
+    "outDir": "./bin",
+    "rootDir": "./",
     "strict": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -24,47 +24,21 @@
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": false,
     "noUncheckedIndexedAccess": false,
+    "allowJs": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "importHelpers": false,
-    "downlevelIteration": true,
-    "isolatedModules": false,
-    "allowJs": true,
     "resolveJsonModule": true,
-    "baseUrl": "./src",
-    "paths": {
-      "@/*": ["./*"],
-      "@behaviourTree/*": ["./behaviourTree/*"],
-      "@core/*": ["./core/*"],
-      "@fsm/*": ["./fsm/*"],
-      "@utilityAI/*": ["./utilityAI/*"]
-    },
-    "typeRoots": ["./node_modules/@types"],
-    "types": [],
-    "preserveSymlinks": false,
-    "allowUmdGlobalAccess": false,
-    "sourceRoot": "",
-    "mapRoot": "",
-    "inlineSourceMap": false,
-    "inlineSources": false,
-    "newLine": "lf",
-    "noErrorTruncation": false,
-    "noImplicitUseStrict": false,
-    "noStrictGenericChecks": false,
-    "suppressExcessPropertyErrors": false,
-    "suppressImplicitAnyIndexErrors": false,
-    "useDefineForClassFields": true
+    "isolatedModules": true
   },
   "include": [
-    "src/**/*"
+    "./**/*.ts"
   ],
   "exclude": [
     "node_modules",
+    "bin",
     "dist",
+    "source",
     "**/*.test.ts",
     "**/*.spec.ts"
-  ],
-  "ts-node": {
-    "esm": true
-  }
+  ]
 }
