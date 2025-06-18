@@ -1,6 +1,7 @@
 import { Behavior } from './Behavior.js';
 import { TimeManager } from '../core/TimeManager.js';
 import { ErrorHandler } from '../core/ErrorHandler.js';
+import { Blackboard } from './Blackboard.js';
 
 /**
  * 行为树控制器
@@ -39,6 +40,9 @@ export class BehaviorTree<T> {
     /** 执行上下文，包含行为树运行所需的所有数据 */
     private _context: T;
     
+    /** 黑板实例，用于节点间的数据共享 */
+    private _blackboard: Blackboard;
+    
     /** 行为树的根节点 */
     private _root: Behavior<T>;
     
@@ -71,13 +75,15 @@ export class BehaviorTree<T> {
      * @param rootNode 根节点
      * @param updatePeriod 更新周期，0表示每帧更新
      * @param performanceMode 是否启用性能优化模式，默认false
+     * @param blackboard 可选的黑板实例，如果不提供将自动创建
      * @throws {Error} 当context或rootNode为null时抛出错误
      */
     constructor(
         context: T, 
         rootNode: Behavior<T>, 
         updatePeriod: number = 0.2, 
-        performanceMode: boolean = false
+        performanceMode: boolean = false,
+        blackboard?: Blackboard
     ) {
         if (context == null) {
             throw new Error('上下文不能为null或undefined');
@@ -94,6 +100,10 @@ export class BehaviorTree<T> {
         this.updatePeriod = this._elapsedTime = updatePeriod;
         this._performanceMode = performanceMode;
         this._lastTime = this._getCurrentTime();
+        this._blackboard = blackboard || new Blackboard();
+        
+        // 将黑板注入到上下文中
+        (this._context as any).blackboard = this._blackboard;
     }
 
     /**
@@ -214,6 +224,14 @@ export class BehaviorTree<T> {
     }
 
     /**
+     * 获取黑板实例
+     * @returns 黑板实例
+     */
+    public getBlackboard(): Blackboard {
+        return this._blackboard;
+    }
+
+    /**
      * 更新上下文
      * @param context 新的上下文对象
      * @throws {Error} 当context为null时抛出错误
@@ -223,6 +241,8 @@ export class BehaviorTree<T> {
             throw new Error('上下文不能为null或undefined');
         }
         this._context = context;
+        // 确保新上下文中也包含黑板引用
+        (this._context as any).blackboard = this._blackboard;
     }
 
     /**

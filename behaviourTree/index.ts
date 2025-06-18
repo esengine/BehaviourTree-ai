@@ -8,6 +8,7 @@ export * from './BehaviorTreeBuilder';
 export * from './TaskStatus';
 export * from './ObjectPool';
 export * from './AdvancedObjectPool';
+export * from './Blackboard';
 
 // Actions
 export * from './actions/index';
