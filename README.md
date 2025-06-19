@@ -412,21 +412,45 @@ console.log(`内存使用: ${memoryStats.usedMemory}MB`);
 
 ## 🎯 最佳实践
 
-### 1. 行为树设计
+### 1. 从配置创建行为树 🆕
+
+```typescript
+import { BehaviorTreeBuilder } from '@esengine/ai';
+
+// 从JSON配置文件创建行为树（由可视化编辑器导出）
+const config = loadConfigFromFile('my_behavior_tree.json');
+
+// 创建上下文对象
+const gameContext = {
+    health: 100,
+    position: { x: 0, y: 0 },
+    // ... 其他游戏数据
+};
+
+// 从配置创建行为树
+const behaviorTree = BehaviorTreeBuilder.fromConfig(config, gameContext);
+
+// 在游戏循环中更新
+behaviorTree.tick();
+```
+
+**支持的节点类型：** Sequence, Selector, Parallel, AlwaysSucceed, AlwaysFail, Inverter, Repeater, UntilSuccess, UntilFail, LogAction, WaitAction, ExecuteAction 等
+
+### 2. 行为树设计
 
 - 保持树的深度合理（建议不超过6层）
 - 使用条件装饰器进行早期退出
 - 合理使用中止类型避免不必要的计算
 - 将复杂逻辑拆分为多个简单节点
 
-### 2. 性能优化
+### 3. 性能优化
 
 - 在生产环境中禁用调试日志
 - 使用对象池管理频繁创建的对象
 - 避免在update方法中进行复杂计算
 - 使用时间管理器减少时间计算开销
 
-### 3. 内存管理
+### 4. 内存管理
 
 - 及时清理事件监听器
 - 使用弱引用避免循环引用
