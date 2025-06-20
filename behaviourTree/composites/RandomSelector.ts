@@ -1,6 +1,6 @@
-import { Selector } from './Selector.js';
-import { ArrayExt } from '../../core/ArrayExt.js';
-import { AbortTypes } from './AbortTypes.js';
+import { Selector } from './Selector';
+import { ArrayExt } from '../../core/ArrayExt';
+import { AbortTypes } from './AbortTypes';
 
 /**
  * 随机选择器节点

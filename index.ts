@@ -17,7 +17,16 @@ export * as UtilityAI from './utilityAI/index';
 export * as ECSIntegration from './ecs-integration/index';
 
 // 默认导出（向后兼容）
-export { BehaviorTree, BehaviorTreeBuilder, TaskStatus } from './behaviourTree/index';
+export { 
+    BehaviorTree, 
+    BehaviorTreeBuilder, 
+    TaskStatus, 
+    Blackboard, 
+    BlackboardValueType,
+    BehaviorTreeJSONConfig,
+    BehaviorTreeNodeConfig,
+    BlackboardVariableConfig
+} from './behaviourTree/index';
 export { StateMachine, State } from './fsm/index';
 export { UtilityAI as UtilityAICore } from './utilityAI/index';
 

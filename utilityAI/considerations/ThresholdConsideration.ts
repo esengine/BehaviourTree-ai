@@ -1,6 +1,6 @@
-import { IConsideration } from './IConsideration.js';
-import { IAction } from '../actions/IAction.js';
-import { IAppraisal } from './appraisals/ActionAppraisal.js';
+import { IConsideration } from './IConsideration';
+import { IAction } from '../actions/IAction';
+import { IAppraisal } from './appraisals/ActionAppraisal';
 
 /**
  * 阈值考虑因素

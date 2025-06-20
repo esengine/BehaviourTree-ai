@@ -1,5 +1,5 @@
-import { IAction } from './IAction.js';
-import { Reasoner } from '../reasoners/Reasoner.js';
+import { IAction } from './IAction';
+import { Reasoner } from '../reasoners/Reasoner';
 
 /**
  * 推理器动作包装器

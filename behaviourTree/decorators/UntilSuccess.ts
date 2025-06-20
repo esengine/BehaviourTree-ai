@@ -1,5 +1,5 @@
-import { Decorator } from './Decorator.js';
-import { TaskStatus } from '../TaskStatus.js';
+import { Decorator } from './Decorator';
+import { TaskStatus } from '../TaskStatus';
 
 /**
  * 将继续执行其子任务，直到子任务返回成功

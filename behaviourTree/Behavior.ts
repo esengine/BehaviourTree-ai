@@ -1,4 +1,4 @@
-import { TaskStatus } from './TaskStatus.js';
+import { TaskStatus } from './TaskStatus';
 
 /**
  * 行为树节点的抽象基类

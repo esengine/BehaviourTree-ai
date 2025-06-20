@@ -1,6 +1,6 @@
-import { Composite } from './Composite.js';
-import { TaskStatus } from '../TaskStatus.js';
-import { AbortTypes, AbortTypesExt } from './AbortTypes.js';
+import { Composite } from './Composite';
+import { TaskStatus } from '../TaskStatus';
+import { AbortTypes, AbortTypesExt } from './AbortTypes';
 
 /**
  * 序列组合器

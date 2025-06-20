@@ -1,5 +1,5 @@
-import { Composite } from './Composite.js';
-import { TaskStatus } from '../TaskStatus.js';
+import { Composite } from './Composite';
+import { TaskStatus } from '../TaskStatus';
 
 /**
  * 并行组合器

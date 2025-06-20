@@ -1,6 +1,6 @@
-import { IConsideration } from './IConsideration.js';
-import { IAction } from '../actions/IAction.js';
-import { IAppraisal } from './appraisals/IAppraisal.js';
+import { IConsideration } from './IConsideration';
+import { IAction } from '../actions/IAction';
+import { IAppraisal } from './appraisals/IAppraisal';
 
 /**
  * 全或无考量器

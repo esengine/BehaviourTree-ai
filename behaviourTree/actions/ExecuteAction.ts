@@ -1,5 +1,5 @@
-import { Behavior } from '../Behavior.js';
-import { TaskStatus } from '../TaskStatus.js';
+import { Behavior } from '../Behavior';
+import { TaskStatus } from '../TaskStatus';
 
 /**
  * 执行函数动作包装器

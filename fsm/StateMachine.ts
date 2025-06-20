@@ -1,4 +1,4 @@
-import { State } from './State.js';
+import { State } from './State';
 
 /**
  * 状态构造函数类型定义

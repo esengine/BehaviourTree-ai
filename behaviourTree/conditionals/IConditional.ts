@@ -1,4 +1,4 @@
-import { TaskStatus } from '../TaskStatus.js';
+import { TaskStatus } from '../TaskStatus';
 
 export interface IConditional<T> {
     readonly discriminator: 'IConditional';

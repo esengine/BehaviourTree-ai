@@ -10,6 +10,13 @@ export * from './ObjectPool';
 export * from './AdvancedObjectPool';
 export * from './Blackboard';
 
+// 导出接口类型
+export type { 
+    BehaviorTreeJSONConfig,
+    BehaviorTreeNodeConfig,
+    BlackboardVariableConfig
+} from './BehaviorTreeBuilder';
+
 // Actions
 export * from './actions/index';
 

@@ -1,5 +1,5 @@
-import { Behavior } from '../Behavior.js';
-import { TaskStatus } from '../TaskStatus.js';
+import { Behavior } from '../Behavior';
+import { TaskStatus } from '../TaskStatus';
 
 /**
  * 简单的任务，它将输出指定的文本并返回成功。 它可以用于调试。

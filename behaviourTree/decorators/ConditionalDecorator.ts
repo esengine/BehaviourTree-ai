@@ -1,6 +1,6 @@
-import { Decorator } from './Decorator.js';
-import { TaskStatus } from '../TaskStatus.js';
-import { IConditional, isIConditional } from '../conditionals/IConditional.js';
+import { Decorator } from './Decorator';
+import { TaskStatus } from '../TaskStatus';
+import { IConditional, isIConditional } from '../conditionals/IConditional';
 
 /**
  * 装饰器，只有在满足条件的情况下才会运行其子程序。

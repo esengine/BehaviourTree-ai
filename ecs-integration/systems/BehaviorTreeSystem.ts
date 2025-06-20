@@ -1,5 +1,5 @@
 import { EntitySystem, Matcher, Entity } from '@esengine/ecs-framework';
-import { BehaviorTreeComponent } from '../components/BehaviorTreeComponent.js';
+import { BehaviorTreeComponent } from '../components/BehaviorTreeComponent';
 
 /**
  * 行为树系统

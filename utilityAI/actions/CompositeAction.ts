@@ -1,4 +1,4 @@
-import { IAction } from './IAction.js';
+import { IAction } from './IAction';
 
 /**
  * 复合动作

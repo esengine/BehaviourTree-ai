@@ -1,4 +1,4 @@
-import { StateMachine } from './StateMachine.js';
+import { StateMachine } from './StateMachine';
 
 export abstract class State<T> {
     protected _machine!: StateMachine<T>;

@@ -1,5 +1,5 @@
-import { IAction } from './IAction.js';
-import { Reasoner } from '../reasoners/Reasoner.js';
+import { IAction } from './IAction';
+import { Reasoner } from '../reasoners/Reasoner';
 
 /**
  * 包装一个Reasoner，以便它可以作为一个Action使用

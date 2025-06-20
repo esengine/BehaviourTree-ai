@@ -1,5 +1,5 @@
-import { IConsideration } from './IConsideration.js';
-import { IAction } from '../actions/IAction.js';
+import { IConsideration } from './IConsideration';
+import { IAction } from '../actions/IAction';
 
 /**
  * 总是返回一个固定的分数。 作为默认考虑，提供双重任务。

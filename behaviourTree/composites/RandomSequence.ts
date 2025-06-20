@@ -1,6 +1,6 @@
-import { Sequence } from './Sequence.js';
-import { ArrayExt } from '../../core/ArrayExt.js';
-import { AbortTypes } from './AbortTypes.js';
+import { Sequence } from './Sequence';
+import { ArrayExt } from '../../core/ArrayExt';
+import { AbortTypes } from './AbortTypes';
 
 /**
  * 随机序列节点
