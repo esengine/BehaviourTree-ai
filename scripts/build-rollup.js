@@ -1,63 +1,123 @@
-const { rollup } = require('rollup');
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
-// 获取Rollup配置
-const rollupConfig = require('../rollup.config.js');
+console.log('🚀 使用 Rollup 构建npm包...');
 
-async function build() {
-  try {
-    console.log('🚀 开始构建BehaviourTree-AI...');
-    
-    // 确保dist目录存在
-    if (!fs.existsSync('dist')) {
-      fs.mkdirSync('dist', { recursive: true });
+async function main() {
+    try {
+        // 清理旧的dist目录
+        if (fs.existsSync('./dist')) {
+            console.log('🧹 清理旧的构建文件...');
+            execSync('rimraf ./dist', { stdio: 'inherit' });
+        }
+
+        // 执行Rollup构建
+        console.log('📦 执行 Rollup 构建...');
+        execSync('rollup -c', { stdio: 'inherit' });
+
+        // 生成package.json
+        console.log('📋 生成 package.json...');
+        generatePackageJson();
+
+        // 复制其他文件
+        console.log('📁 复制必要文件...');
+        copyFiles();
+
+        // 输出构建结果
+        showBuildResults();
+
+        console.log('✅ 构建完成！');
+        console.log('\n🚀 发布命令:');
+        console.log('cd dist && npm publish');
+
+    } catch (error) {
+        console.error('❌ 构建失败:', error.message);
+        process.exit(1);
     }
-    
-    // 复制package.json到dist目录
-    const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-    
-    // 修改package.json的main字段指向正确的文件
-    const distPackage = {
-      ...pkg,
-      main: 'index.js',
-      types: 'index.d.ts',
-      scripts: undefined, // 移除构建脚本
-      devDependencies: undefined // 移除开发依赖
-    };
-    
-    fs.writeFileSync('dist/package.json', JSON.stringify(distPackage, null, 2));
-    
-    // 复制其他必要文件
-    const filesToCopy = ['README.md', 'LICENSE'];
-    for (const file of filesToCopy) {
-      if (fs.existsSync(file)) {
-        fs.copyFileSync(file, path.join('dist', file));
-      }
-    }
-    
-    // 构建所有配置
-    for (const config of rollupConfig) {
-      console.log(`📦 构建 ${config.output.file}...`);
-      
-      const bundle = await rollup(config);
-      await bundle.write(config.output);
-      await bundle.close();
-    }
-    
-    console.log('✅ 构建完成！输出文件：');
-    const distFiles = fs.readdirSync('dist');
-    distFiles.forEach(file => {
-      const filePath = path.join('dist', file);
-      const stats = fs.statSync(filePath);
-      const size = (stats.size / 1024).toFixed(1);
-      console.log(`   📄 ${file} (${size} KB)`);
-    });
-    
-  } catch (error) {
-    console.error('❌ 构建失败:', error);
-    process.exit(1);
-  }
 }
 
-build(); 
+function generatePackageJson() {
+    const sourcePackage = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
+    
+    const distPackage = {
+        name: sourcePackage.name,
+        version: sourcePackage.version,
+        description: sourcePackage.description,
+        main: 'index.js',
+        module: 'index.js',
+        types: 'index.d.ts',
+        type: 'module',
+        exports: {
+            '.': {
+                import: './index.js',
+                types: './index.d.ts'
+            }
+        },
+        files: [
+            'index.js',
+            'index.js.map',
+            'index.umd.js',
+            'index.umd.js.map',
+            'index.d.ts',
+            'README.md',
+            'LICENSE'
+        ],
+        keywords: [
+            'ai',
+            'behaviour-tree',
+            'behavior-tree',
+            'fsm',
+            'utility-ai',
+            'typescript',
+            'game-engine',
+            'cocos-creator',
+            'laya',
+            'rollup'
+        ],
+        author: sourcePackage.author,
+        license: sourcePackage.license,
+        repository: sourcePackage.repository,
+        bugs: sourcePackage.bugs,
+        homepage: sourcePackage.homepage,
+        engines: {
+            node: '>=16.0.0'
+        },
+        sideEffects: false,
+        dependencies: sourcePackage.dependencies
+    };
+
+    fs.writeFileSync('./dist/package.json', JSON.stringify(distPackage, null, 2));
+}
+
+function copyFiles() {
+    const filesToCopy = [
+        { src: './README.md', dest: './dist/README.md' },
+        { src: './LICENSE', dest: './dist/LICENSE' }
+    ];
+
+    filesToCopy.forEach(({ src, dest }) => {
+        if (fs.existsSync(src)) {
+            fs.copyFileSync(src, dest);
+            console.log(`  ✓ 复制: ${path.basename(dest)}`);
+        } else {
+            console.log(`  ⚠️  文件不存在: ${src}`);
+        }
+    });
+}
+
+function showBuildResults() {
+    const distDir = './dist';
+    const files = ['index.js', 'index.umd.js', 'index.d.ts'];
+    
+    console.log('\n📊 构建结果:');
+    files.forEach(file => {
+        const filePath = path.join(distDir, file);
+        if (fs.existsSync(filePath)) {
+            const size = fs.statSync(filePath).size;
+            console.log(`  ${file}: ${(size / 1024).toFixed(1)}KB`);
+        }
+    });
+}
+
+main().catch(console.error); 

@@ -24,11 +24,13 @@
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": false,
     "noUncheckedIndexedAccess": false,
-    "allowJs": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true
+    "importHelpers": false,
+    "downlevelIteration": true,
+    "isolatedModules": false,
+    "allowJs": true,
+    "resolveJsonModule": true
   },
   "include": [
     "./**/*.ts"
