@@ -1,7 +1,7 @@
-import { Behavior } from './Behavior.js';
-import { TimeManager } from '../core/TimeManager.js';
-import { ErrorHandler } from '../core/ErrorHandler.js';
-import { Blackboard } from './Blackboard.js';
+import { Behavior } from './Behavior';
+import { TimeManager } from '../core/TimeManager';
+import { ErrorHandler } from '../core/ErrorHandler';
+import { Blackboard } from './Blackboard';
 
 /**
  * 行为树控制器

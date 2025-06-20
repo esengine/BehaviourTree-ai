@@ -1,22 +1,22 @@
 // ECS集成模块总导出
 
 // 重新导出原始行为树模块
-export * from '../behaviourTree/index.js';
+export * from '../behaviourTree/index';
 
 // 导出ECS集成组件
-export { BehaviorTreeComponent } from './components/BehaviorTreeComponent.js';
+export { BehaviorTreeComponent } from './components/BehaviorTreeComponent';
 
 // 导出ECS集成系统
-export { BehaviorTreeSystem } from './systems/BehaviorTreeSystem.js';
+export { BehaviorTreeSystem } from './systems/BehaviorTreeSystem';
 
 // 导出ECS特化的行为树节点
-export * from './behaviors/ECSBehaviors.js';
+export * from './behaviors/ECSBehaviors';
 
 // 导出ECS行为树构建器
-export { ECSBehaviorTreeBuilder } from './builders/ECSBehaviorTreeBuilder.js';
+export { ECSBehaviorTreeBuilder } from './builders/ECSBehaviorTreeBuilder';
 
 // 导出行为树工厂
-export { BehaviorTreeFactory } from './factories/BehaviorTreeFactory.js';
+export { BehaviorTreeFactory } from './factories/BehaviorTreeFactory';
 
 /**
  * ECS集成模块使用说明：

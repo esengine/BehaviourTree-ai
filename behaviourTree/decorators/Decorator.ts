@@ -1,4 +1,4 @@
-import { Behavior } from '../Behavior.js';
+import { Behavior } from '../Behavior';
 
 export abstract class Decorator<T> extends Behavior<T> {
     public child!: Behavior<T>;

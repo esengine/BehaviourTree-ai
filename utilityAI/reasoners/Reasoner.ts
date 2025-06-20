@@ -1,6 +1,6 @@
-import { IConsideration } from '../considerations/IConsideration.js';
-import { IAction } from '../actions/IAction.js';
-import { FixedScoreConsideration } from '../considerations/FixedScoreConsideration.js';
+import { IConsideration } from '../considerations/IConsideration';
+import { IAction } from '../actions/IAction';
+import { FixedScoreConsideration } from '../considerations/FixedScoreConsideration';
 
 /**
  * UtilityAI的根节点推理器

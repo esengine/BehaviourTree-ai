@@ -1,6 +1,6 @@
-import { Behavior } from '../Behavior.js';
-import { TaskStatus } from '../TaskStatus.js';
-import { Blackboard, BlackboardValueType } from '../Blackboard.js';
+import { Behavior } from '../Behavior';
+import { TaskStatus } from '../TaskStatus';
+import { Blackboard, BlackboardValueType } from '../Blackboard';
 
 /**
  * 设置黑板变量值

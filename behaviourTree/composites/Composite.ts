@@ -1,7 +1,7 @@
-import { Behavior } from '../Behavior.js';
-import { TaskStatus } from '../TaskStatus.js';
-import { AbortTypes, AbortTypesExt } from './AbortTypes.js';
-import { isIConditional } from '../conditionals/IConditional.js';
+import { Behavior } from '../Behavior';
+import { TaskStatus } from '../TaskStatus';
+import { AbortTypes, AbortTypesExt } from './AbortTypes';
+import { isIConditional } from '../conditionals/IConditional';
 
 /**
  * 复合节点基类

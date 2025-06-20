@@ -1,6 +1,6 @@
-import { Behavior } from '../Behavior.js';
-import { TaskStatus } from '../TaskStatus.js';
-import { IConditional } from './IConditional.js';
+import { Behavior } from '../Behavior';
+import { TaskStatus } from '../TaskStatus';
+import { IConditional } from './IConditional';
 
 /**
  * 当随机概率高于successProbability概率时返回成功。

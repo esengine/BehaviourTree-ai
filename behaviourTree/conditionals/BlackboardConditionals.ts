@@ -1,6 +1,6 @@
-import { IConditional } from './IConditional.js';
-import { Blackboard, BlackboardValueType } from '../Blackboard.js';
-import { TaskStatus } from '../TaskStatus.js';
+import { IConditional } from './IConditional';
+import { Blackboard, BlackboardValueType } from '../Blackboard';
+import { TaskStatus } from '../TaskStatus';
 
 /**
  * 黑板比较操作符

@@ -1,5 +1,5 @@
-import { Reasoner } from './Reasoner.js';
-import { IConsideration } from '../considerations/IConsideration.js';
+import { Reasoner } from './Reasoner';
+import { IConsideration } from '../considerations/IConsideration';
 
 /**
  * 选择高于默认考虑分数的第一个考虑因素

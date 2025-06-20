@@ -1,4 +1,4 @@
-import { Reasoner } from './reasoners/Reasoner.js';
+import { Reasoner } from './reasoners/Reasoner';
 
 export class UtilityAI<T> {
     /**

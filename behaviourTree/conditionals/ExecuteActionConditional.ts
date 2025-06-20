@@ -1,6 +1,6 @@
-import { ExecuteAction } from '../actions/ExecuteAction.js';
-import { TaskStatus } from '../TaskStatus.js';
-import { IConditional } from './IConditional.js';
+import { ExecuteAction } from '../actions/ExecuteAction';
+import { TaskStatus } from '../TaskStatus';
+import { IConditional } from './IConditional';
 
 /**
  * 执行动作条件包装器

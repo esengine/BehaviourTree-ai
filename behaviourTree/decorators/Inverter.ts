@@ -1,5 +1,5 @@
-import { Decorator } from './Decorator.js';
-import { TaskStatus } from '../TaskStatus.js';
+import { Decorator } from './Decorator';
+import { TaskStatus } from '../TaskStatus';
 
 /**
  * 反转结果的子节点

@@ -1,4 +1,4 @@
-import { IAction } from './IAction.js';
+import { IAction } from './IAction';
 
 /**
  * 动作选项评估接口

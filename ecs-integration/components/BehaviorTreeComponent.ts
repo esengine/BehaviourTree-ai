@@ -1,6 +1,6 @@
 import { Component, Entity } from '@esengine/ecs-framework';
-import { BehaviorTree } from '../../behaviourTree/BehaviorTree.js';
-import { TaskStatus } from '../../behaviourTree/TaskStatus.js';
+import { BehaviorTree } from '../../behaviourTree/BehaviorTree';
+import { TaskStatus } from '../../behaviourTree/TaskStatus';
 
 /**
  * 行为树组件

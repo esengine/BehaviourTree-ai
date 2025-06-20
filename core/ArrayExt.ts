@@ -1,4 +1,4 @@
-import { Random } from './Random.js';
+import { Random } from './Random';
 
 /**
  * 数组扩展器和高效数据结构工具

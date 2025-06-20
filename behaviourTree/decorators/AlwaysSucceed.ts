@@ -1,5 +1,5 @@
-import { Decorator } from './Decorator.js';
-import { TaskStatus } from '../TaskStatus.js';
+import { Decorator } from './Decorator';
+import { TaskStatus } from '../TaskStatus';
 
 /**
  *  将总是返回成功，除了当子任务正在运行时

@@ -1,5 +1,5 @@
-import { Reasoner } from './Reasoner.js';
-import { IConsideration } from '../considerations/IConsideration.js';
+import { Reasoner } from './Reasoner';
+import { IConsideration } from '../considerations/IConsideration';
 
 /**
  * 选择评分最高的考虑因素

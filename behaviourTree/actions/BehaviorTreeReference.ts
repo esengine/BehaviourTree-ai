@@ -1,6 +1,6 @@
-import { Behavior } from '../Behavior.js';
-import { BehaviorTree } from '../BehaviorTree.js';
-import { TaskStatus } from '../TaskStatus.js';
+import { Behavior } from '../Behavior';
+import { BehaviorTree } from '../BehaviorTree';
+import { TaskStatus } from '../TaskStatus';
 
 /**
  * 作为子项运行整个BehaviorTree并返回成功
