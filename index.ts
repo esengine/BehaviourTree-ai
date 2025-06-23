@@ -27,6 +27,16 @@ export {
     BehaviorTreeNodeConfig,
     BlackboardVariableConfig
 } from './behaviourTree/index';
+
+// 事件系统导出
+export { 
+    EventRegistry, 
+    GlobalEventRegistry,
+    IEventHandler,
+    IConditionChecker,
+    ActionHandler,
+    ConditionChecker
+} from './behaviourTree/events';
 export { StateMachine, State } from './fsm/index';
 export { UtilityAI as UtilityAICore } from './utilityAI/index';
 

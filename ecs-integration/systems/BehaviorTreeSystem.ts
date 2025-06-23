@@ -1,4 +1,4 @@
-import { EntitySystem, Matcher, Entity } from '@esengine/ecs-framework';
+import { EntitySystem, Matcher, Entity, Time } from '@esengine/ecs-framework';
 import { BehaviorTreeComponent } from '../components/BehaviorTreeComponent';
 
 /**
@@ -42,26 +42,38 @@ export class BehaviorTreeSystem extends EntitySystem {
             this._deltaTimeAccumulator += deltaTime;
             
             while (this._deltaTimeAccumulator >= this._fixedTimeStep) {
-                this.updateBehaviorTrees(entities, this._fixedTimeStep, maxEntityUpdateTime);
+                const entityMaxTime = this.updateBehaviorTrees(entities, this._fixedTimeStep);
+                maxEntityUpdateTime = Math.max(maxEntityUpdateTime, entityMaxTime);
                 this._deltaTimeAccumulator -= this._fixedTimeStep;
             }
         } else {
-            this.updateBehaviorTrees(entities, deltaTime, maxEntityUpdateTime);
+            maxEntityUpdateTime = this.updateBehaviorTrees(entities, deltaTime);
         }
 
         const totalTime = performance.now() - frameStartTime;
         this.updatePerformanceStats(totalTime, maxEntityUpdateTime);
     }
 
-    private updateBehaviorTrees(entities: Entity[], deltaTime: number, maxEntityUpdateTime: number): void {
+    private updateBehaviorTrees(entities: Entity[], deltaTime: number): number {
+        let maxEntityUpdateTime = 0;
+        
         for (const entity of entities) {
+            // 检查实体是否激活
             if (!entity.activeInHierarchy) {
                 this._performanceStats.skippedEntities++;
                 continue;
             }
 
             const behaviorTreeComp = entity.getComponent(BehaviorTreeComponent);
-            if (!behaviorTreeComp || !behaviorTreeComp.isRunning) {
+            
+            // 检查组件是否存在并且正在运行
+            if (!behaviorTreeComp || !behaviorTreeComp.enabled || !behaviorTreeComp.isRunning) {
+                this._performanceStats.skippedEntities++;
+                continue;
+            }
+
+            // 检查行为树是否存在
+            if (!behaviorTreeComp.getBehaviorTree()) {
                 this._performanceStats.skippedEntities++;
                 continue;
             }
@@ -69,16 +81,34 @@ export class BehaviorTreeSystem extends EntitySystem {
             const entityStartTime = performance.now();
             
             try {
+                // 更新行为树
                 behaviorTreeComp.updateBehaviorTree(deltaTime);
                 this._performanceStats.updatedEntities++;
             } catch (error) {
-                console.error(`行为树系统: 更新实体 ${entity.id} 时发生错误:`, error);
+                console.error(`行为树系统: 更新实体 ${entity.id} (${entity.name || 'Unknown'}) 时发生错误:`, error);
+                
+                // 停止出错的行为树
                 behaviorTreeComp.stop();
+                
+                // 如果是调试模式，提供更多信息
+                if (behaviorTreeComp.debugMode) {
+                    console.error(`行为树详细信息:`, {
+                        treeName: behaviorTreeComp.treeName,
+                        entityId: entity.id,
+                        entityName: entity.name,
+                        lastStatus: behaviorTreeComp.lastStatus,
+                        stats: behaviorTreeComp.stats
+                    });
+                }
+                
+                this._performanceStats.skippedEntities++;
             }
             
             const entityUpdateTime = performance.now() - entityStartTime;
             maxEntityUpdateTime = Math.max(maxEntityUpdateTime, entityUpdateTime);
         }
+        
+        return maxEntityUpdateTime;
     }
 
     private updatePerformanceStats(totalTime: number, maxEntityTime: number): void {
@@ -96,7 +126,23 @@ export class BehaviorTreeSystem extends EntitySystem {
      * 获取行为树系统的性能统计信息
      */
     public getBehaviorTreeStats() {
-        return Object.assign({}, this._performanceStats);
+        return {
+            ...this._performanceStats,
+            systemSettings: {
+                useFixedTimeStep: this._useFixedTimeStep,
+                fixedTimeStep: this._fixedTimeStep,
+                updateOrder: this.updateOrder,
+                enabled: this.enabled
+            },
+            currentStatus: {
+                totalEntities: this.entities.length,
+                activeEntities: this.entities.filter(e => e.activeInHierarchy).length,
+                runningBehaviorTrees: this.entities.filter(e => {
+                    const comp = e.getComponent(BehaviorTreeComponent);
+                    return comp && comp.isRunning;
+                }).length
+            }
+        };
     }
 
     /**
@@ -220,12 +266,128 @@ export class BehaviorTreeSystem extends EntitySystem {
      * 获取系统的DeltaTime（从ECS框架获取）
      */
     private getDeltaTime(): number {
-        // 这里可以从ECS框架的Time类获取deltaTime
-        // 暂时使用简单的计算方式
-        return 1/60; // 假设60FPS
+        // 从ECS框架的Time类获取真实的deltaTime
+        return Time.deltaTime || (1/60); // 如果Time.deltaTime为0，使用60FPS作为默认值
+    }
+
+    /**
+     * 获取所有正在运行的行为树组件
+     */
+    public getRunningBehaviorTrees(): BehaviorTreeComponent[] {
+        return this.entities
+            .map(e => e.getComponent(BehaviorTreeComponent))
+            .filter(comp => comp && comp.isRunning) as BehaviorTreeComponent[];
+    }
+
+    /**
+     * 获取指定状态的行为树组件数量
+     */
+    public getBehaviorTreeCountByStatus(): { running: number; paused: number; stopped: number; error: number } {
+        let running = 0, paused = 0, stopped = 0, error = 0;
+        
+        for (const entity of this.entities) {
+            const comp = entity.getComponent(BehaviorTreeComponent);
+            if (!comp) continue;
+            
+            if (comp.isRunning) {
+                running++;
+            } else if (comp.getBehaviorTree()) {
+                paused++;
+            } else {
+                stopped++;
+            }
+        }
+        
+        return { running, paused, stopped, error };
+    }
+
+    /**
+     * 获取性能问题的行为树（执行时间过长）
+     */
+    public getSlowBehaviorTrees(thresholdMs: number = 5): Array<{
+        component: BehaviorTreeComponent;
+        entityId: number;
+        lastTickTime: number;
+        averageTickTime: number;
+    }> {
+        return this.entities
+            .map(e => e.getComponent(BehaviorTreeComponent))
+            .filter(comp => comp && comp.stats.lastTickTime > thresholdMs)
+            .map(comp => ({
+                component: comp!,
+                entityId: comp!.entity.id,
+                lastTickTime: comp!.stats.lastTickTime,
+                averageTickTime: comp!.stats.averageTickTime
+            }));
+    }
+
+    /**
+     * 批量设置调试模式
+     */
+    public setDebugMode(enabled: boolean, treeName?: string): number {
+        let count = 0;
+        for (const entity of this.entities) {
+            const comp = entity.getComponent(BehaviorTreeComponent);
+            if (comp && (!treeName || comp.treeName === treeName)) {
+                comp.debugMode = enabled;
+                count++;
+            }
+        }
+        console.log(`行为树系统: ${enabled ? '启用' : '禁用'}调试模式，影响 ${count} 个行为树${treeName ? ` (${treeName})` : ''}`);
+        return count;
+    }
+
+    /**
+     * 获取系统健康状态报告
+     */
+    public getHealthReport(): {
+        overallHealth: 'good' | 'warning' | 'critical';
+        issues: string[];
+        recommendations: string[];
+                 stats: any;
+    } {
+        const stats = this.getBehaviorTreeStats();
+        const issues: string[] = [];
+        const recommendations: string[] = [];
+        
+        // 检查性能问题
+        if (stats.maxUpdateTime > 16.67) { // 超过60FPS的帧时间
+            issues.push(`最大实体更新时间过长: ${stats.maxUpdateTime.toFixed(2)}ms`);
+            recommendations.push('考虑减少行为树复杂度或启用固定时间步长');
+        }
+        
+        if (stats.averageUpdateTime > 10) {
+            issues.push(`平均更新时间较高: ${stats.averageUpdateTime.toFixed(2)}ms`);
+            recommendations.push('优化行为树节点执行效率');
+        }
+        
+        // 检查跳过率
+        const skipRate = stats.totalEntities > 0 ? stats.skippedEntities / stats.totalEntities : 0;
+        if (skipRate > 0.5) {
+            issues.push(`实体跳过率过高: ${(skipRate * 100).toFixed(1)}%`);
+            recommendations.push('检查实体激活状态和行为树配置');
+        }
+        
+        // 检查慢速行为树
+        const slowTrees = this.getSlowBehaviorTrees();
+        if (slowTrees.length > 0) {
+            issues.push(`发现 ${slowTrees.length} 个执行缓慢的行为树`);
+            recommendations.push('优化慢速行为树的节点逻辑');
+        }
+        
+        const overallHealth = issues.length === 0 ? 'good' : 
+                            issues.length <= 2 ? 'warning' : 'critical';
+        
+        return {
+            overallHealth,
+            issues,
+            recommendations,
+            stats
+        };
     }
 
     public override toString(): string {
-        return `BehaviorTreeSystem(实体: ${this.entities.length}, 运行中: ${this._performanceStats.updatedEntities}, 固定步长: ${this._useFixedTimeStep})`;
+        const statusCount = this.getBehaviorTreeCountByStatus();
+        return `BehaviorTreeSystem(实体: ${this.entities.length}, 运行中: ${statusCount.running}, 暂停: ${statusCount.paused}, 固定步长: ${this._useFixedTimeStep})`;
     }
 } 

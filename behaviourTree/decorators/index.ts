@@ -5,4 +5,7 @@ export * from './ConditionalDecorator';
 export * from './Inverter';
 export * from './Repeater';
 export * from './UntilFail';
-export * from './UntilSuccess'; 
+export * from './UntilSuccess';
+export * from './CooldownDecorator';
+export * from './TimeoutDecorator';
+export * from './ChanceDecorator'; 

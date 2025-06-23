@@ -24,6 +24,47 @@ import { RandomSequence } from './composites/RandomSequence';
 import { AbortTypes } from './composites/AbortTypes';
 import { Blackboard, BlackboardValueType } from './Blackboard';
 
+// 黑板动作节点导入
+import { 
+    SetBlackboardValue, 
+    AddToBlackboardValue, 
+    ToggleBlackboardBool, 
+    ResetBlackboardVariable, 
+    MathBlackboardOperation, 
+    MathOperation,
+    LogBlackboardValue,
+    WaitForBlackboardCondition 
+} from './actions/BlackboardActions';
+
+// 黑板条件节点导入
+import { 
+    BlackboardValueComparison, 
+    CompareOperator, 
+    BlackboardVariableExists, 
+    BlackboardVariableTypeCheck,
+    BlackboardVariableRangeCheck 
+} from './conditionals/BlackboardConditionals';
+
+// 通用条件节点导入
+import { NumericComparison, PropertyExists } from './conditionals/GeneralConditionals';
+
+// 高级装饰器导入
+import { CooldownDecorator } from './decorators/CooldownDecorator';
+import { TimeoutDecorator } from './decorators/TimeoutDecorator';
+import { ChanceDecorator } from './decorators/ChanceDecorator';
+
+// ECS集成节点导入
+import { 
+    HasComponentCondition,
+    AddComponentAction,
+    RemoveComponentAction,
+    HasTagCondition,
+    ModifyComponentAction,
+    WaitTimeAction,
+    IsActiveCondition,
+    DestroyEntityAction
+} from '../ecs-integration/behaviors/ECSBehaviors';
+
 /**
  * 支持的黑板变量类型联合类型
  */
@@ -812,7 +853,7 @@ export class BehaviorTreeBuilder<T> {
      * @param context 执行上下文
      * @returns 创建的节点实例
      */
-    private static createNodeFromJSONConfig<T>(
+    private static createNodeFromJSONConfig<T extends { blackboard?: Blackboard }>(
         nodeConfig: BehaviorTreeNodeConfig, 
         nodeMap: Map<string, BehaviorTreeNodeConfig>,
         context: T
@@ -840,15 +881,29 @@ export class BehaviorTreeBuilder<T> {
 
             // 复合节点
             case 'selector':
-                node = new Selector<T>(AbortTypes.None);
+                const selectorAbortType = BehaviorTreeBuilder.getAbortType(String(props.abortType || 'None'));
+                node = new Selector<T>(selectorAbortType);
                 break;
                 
             case 'sequence':
-                node = new Sequence<T>(AbortTypes.None);
+                const sequenceAbortType = BehaviorTreeBuilder.getAbortType(String(props.abortType || 'None'));
+                node = new Sequence<T>(sequenceAbortType);
                 break;
                 
             case 'parallel':
                 node = new Parallel<T>();
+                break;
+
+            case 'parallel-selector':
+                node = new ParallelSelector<T>();
+                break;
+
+            case 'random-selector':
+                node = new RandomSelector<T>();
+                break;
+
+            case 'random-sequence':
+                node = new RandomSequence<T>();
                 break;
 
             // 装饰器节点
@@ -860,6 +915,22 @@ export class BehaviorTreeBuilder<T> {
                 
             case 'inverter':
                 node = new Inverter<T>();
+                break;
+
+            case 'always-succeed':
+                node = new AlwaysSucceed<T>();
+                break;
+
+            case 'always-fail':
+                node = new AlwaysFail<T>();
+                break;
+
+            case 'until-success':
+                node = new UntilSuccess<T>();
+                break;
+
+            case 'until-fail':
+                node = new UntilFail<T>();
                 break;
 
             case 'conditional-decorator':
@@ -896,6 +967,27 @@ export class BehaviorTreeBuilder<T> {
                 const waitTimeProp = props.waitTime;
                 const waitTime = typeof waitTimeProp === 'number' ? waitTimeProp : 1.0;
                 node = new WaitAction<T>(waitTime);
+                break;
+
+            case 'behavior-tree-reference':
+                const subTreePath = props.subTreePath || props.treePath;
+                if (subTreePath && typeof subTreePath === 'string') {
+                    try {
+                        // 这里需要从路径加载子行为树
+                        // 在实际应用中，应该有一个行为树管理器来处理这个
+                        console.warn(`behavior-tree-reference节点需要实现子行为树加载机制: ${subTreePath}`);
+                        node = new ExecuteAction<T>((ctx: T) => {
+                            console.log(`执行子行为树引用: ${subTreePath}`);
+                            return TaskStatus.Success;
+                        });
+                    } catch (error) {
+                        console.error('加载子行为树失败:', error);
+                        node = new ExecuteAction<T>(() => TaskStatus.Failure);
+                    }
+                } else {
+                    console.warn('behavior-tree-reference节点缺少subTreePath属性');
+                    node = new ExecuteAction<T>(() => TaskStatus.Failure);
+                }
                 break;
                 
             case 'set-blackboard-value':
@@ -995,6 +1087,459 @@ export class BehaviorTreeBuilder<T> {
                 }
                 break;
 
+            case 'condition-component':
+                const componentTypeName = props.componentType || 'Component';
+                node = new ExecuteActionConditional<T>((ctx: T) => {
+                    console.warn(`condition-component节点需要在ECS环境中使用，组件类型: ${componentTypeName}`);
+                    return TaskStatus.Failure;
+                });
+                break;
+
+            case 'condition-tag':
+                const tagValue = Number(props.tagValue) || 0;
+                node = new ExecuteActionConditional<T>((ctx: T) => {
+                    console.warn(`condition-tag节点需要在ECS环境中使用，标签值: ${tagValue}`);
+                    return TaskStatus.Failure;
+                });
+                break;
+
+            case 'condition-active':
+                const checkHierarchyProp = props.checkHierarchy !== false;
+                node = new ExecuteActionConditional<T>((ctx: T) => {
+                    console.warn(`condition-active节点需要在ECS环境中使用，检查层级: ${checkHierarchyProp}`);
+                    return TaskStatus.Failure;
+                });
+                break;
+
+            case 'condition-numeric':
+                node = new ExecuteActionConditional<T>((ctx: T) => {
+                    const conditional = new NumericComparison<T>(
+                        String(props.propertyPath || 'value'),
+                        String(props.compareOperator || 'equal') as 'greater' | 'less' | 'equal' | 'greaterEqual' | 'lessEqual' | 'notEqual',
+                        Number(props.compareValue) || 0
+                    );
+                    return conditional.update(ctx);
+                });
+                break;
+
+            case 'condition-property':
+                node = new ExecuteActionConditional<T>((ctx: T) => {
+                    const conditional = new PropertyExists<T>(String(props.propertyPath || 'property'));
+                    return conditional.update(ctx);
+                });
+                break;
+
+            // 事件驱动节点
+            case 'event-action':
+                const eventActionName = props.eventName;
+                if (eventActionName && typeof eventActionName === 'string') {
+                    node = new ExecuteAction<T>((ctx: T) => {
+                        try {
+                            // 从上下文中获取事件注册表
+                            const eventRegistry = (ctx as any).eventRegistry;
+                            if (!eventRegistry) {
+                                console.warn(`[event-action] 未找到事件注册表，请在执行上下文中提供 eventRegistry`);
+                                return TaskStatus.Failure;
+                            }
+                            
+                            // 获取事件处理器
+                            const handler = eventRegistry.getActionHandler ? 
+                                eventRegistry.getActionHandler(eventActionName) :
+                                eventRegistry.handlers?.get(eventActionName);
+                            
+                            if (!handler) {
+                                console.warn(`[event-action] 未找到事件处理器: ${eventActionName}`);
+                                return TaskStatus.Failure;
+                            }
+                            
+                            // 解析参数
+                            let parameters = {};
+                            if (props.parameters) {
+                                if (typeof props.parameters === 'string') {
+                                    try {
+                                        parameters = JSON.parse(props.parameters);
+                                    } catch (e) {
+                                        console.warn(`[event-action] 参数解析失败: ${props.parameters}`);
+                                    }
+                                } else {
+                                    parameters = props.parameters;
+                                }
+                                
+                                // 支持黑板变量替换
+                                const blackboard = (ctx as any).blackboard;
+                                if (blackboard) {
+                                    parameters = BehaviorTreeBuilder.replaceBlackboardVariables(parameters, blackboard);
+                                }
+                            }
+                            
+                            // 执行事件处理器
+                            const result = handler(ctx, parameters);
+                            
+                            // 处理异步结果
+                            if (result instanceof Promise) {
+                                if (props.async !== false) {
+                                    result.then((asyncResult) => {
+                                        console.log(`[event-action] 异步事件 ${eventActionName} 完成: ${asyncResult}`);
+                                    }).catch((error) => {
+                                        console.error(`[event-action] 异步事件 ${eventActionName} 失败:`, error);
+                                    });
+                                    return TaskStatus.Running;
+                                } else {
+                                    console.warn(`[event-action] 事件 ${eventActionName} 返回Promise但未标记为异步，将阻塞执行`);
+                                    return TaskStatus.Running;
+                                }
+                            }
+                            
+                            // 处理同步结果
+                            if (typeof result === 'string') {
+                                switch (result.toLowerCase()) {
+                                    case 'success': return TaskStatus.Success;
+                                    case 'failure': return TaskStatus.Failure;
+                                    case 'running': return TaskStatus.Running;
+                                    default: return TaskStatus.Success;
+                                }
+                            }
+                            
+                            return result === true ? TaskStatus.Success : 
+                                   result === false ? TaskStatus.Failure : TaskStatus.Success;
+                                   
+                        } catch (error) {
+                            console.error(`[event-action] 事件 ${eventActionName} 执行失败:`, error);
+                            return TaskStatus.Failure;
+                        }
+                    });
+                } else {
+                    console.warn('[event-action] 缺少 eventName 属性');
+                    node = new ExecuteAction<T>(() => TaskStatus.Failure);
+                }
+                break;
+
+            case 'event-condition':
+                const eventConditionName = props.eventName;
+                if (eventConditionName && typeof eventConditionName === 'string') {
+                    node = new ExecuteActionConditional<T>((ctx: T) => {
+                        try {
+                            // 从上下文中获取事件注册表
+                            const eventRegistry = (ctx as any).eventRegistry;
+                            if (!eventRegistry) {
+                                console.warn(`[event-condition] 未找到事件注册表，请在执行上下文中提供 eventRegistry`);
+                                return TaskStatus.Failure;
+                            }
+                            
+                            // 获取条件处理器
+                            const checker = eventRegistry.getConditionHandler ? 
+                                eventRegistry.getConditionHandler(eventConditionName) :
+                                eventRegistry.handlers?.get(eventConditionName);
+                            
+                            if (!checker) {
+                                console.warn(`[event-condition] 未找到条件处理器: ${eventConditionName}`);
+                                return TaskStatus.Failure;
+                            }
+                            
+                            // 解析参数
+                            let parameters = {};
+                            if (props.parameters) {
+                                if (typeof props.parameters === 'string') {
+                                    try {
+                                        parameters = JSON.parse(props.parameters);
+                                    } catch (e) {
+                                        console.warn(`[event-condition] 参数解析失败: ${props.parameters}`);
+                                    }
+                                } else {
+                                    parameters = props.parameters;
+                                }
+                                
+                                // 支持黑板变量替换
+                                const blackboard = (ctx as any).blackboard;
+                                if (blackboard) {
+                                    parameters = BehaviorTreeBuilder.replaceBlackboardVariables(parameters, blackboard);
+                                }
+                            }
+                            
+                            // 执行条件检查
+                            const result = checker(ctx, parameters);
+                            
+                            // 处理异步结果
+                            if (result instanceof Promise) {
+                                console.warn(`[event-condition] 条件 ${eventConditionName} 返回Promise，条件节点不支持异步操作`);
+                                return TaskStatus.Failure;
+                            }
+                            
+                            return result ? TaskStatus.Success : TaskStatus.Failure;
+                            
+                        } catch (error) {
+                            console.error(`[event-condition] 条件 ${eventConditionName} 检查失败:`, error);
+                            return TaskStatus.Failure;
+                        }
+                    });
+                } else {
+                    console.warn('[event-condition] 缺少 eventName 属性');
+                    node = new ExecuteActionConditional<T>(() => TaskStatus.Failure);
+                }
+                break;
+
+            // ========== 黑板动作节点 ==========
+            case 'set-blackboard-value':
+                const setVariableName = String(props.variableName || 'variable');
+                const setValue = props.value;
+                const setSourceVariable = props.sourceVariable ? String(props.sourceVariable) : undefined;
+                const setForce = props.force === true;
+                node = new SetBlackboardValue<T>(setVariableName, setValue, setSourceVariable, setForce);
+                break;
+
+            case 'add-to-blackboard':
+            case 'add-blackboard-value':
+                node = new AddToBlackboardValue<T>(
+                    String(props.variableName || 'variable'),
+                    Number(props.increment) || 1,
+                    props.incrementVariable ? String(props.incrementVariable) : undefined
+                );
+                break;
+
+            case 'toggle-blackboard-bool':
+                node = new ToggleBlackboardBool<T>(String(props.variableName || 'variable'));
+                break;
+
+            case 'reset-blackboard-variable':
+                node = new ResetBlackboardVariable<T>(String(props.variableName || 'variable'));
+                break;
+
+            case 'math-blackboard-operation':
+                const operation = String(props.operation || 'add');
+                const operand2Value = typeof props.operand2 === 'string' ? props.operand2 : Number(props.operand2 || 0);
+                node = new MathBlackboardOperation<T>(
+                    String(props.targetVariable || 'result'),
+                    String(props.operand1Variable || 'operand1'),
+                    operand2Value,
+                    MathOperation[operation as keyof typeof MathOperation] || MathOperation.Add
+                );
+                break;
+
+            case 'log-blackboard-value':
+                node = new LogBlackboardValue<T>(
+                    String(props.variableName || 'variable'),
+                    String(props.prefix || '[Blackboard]')
+                );
+                break;
+
+            case 'wait-blackboard-condition':
+                const waitVariableName = String(props.variableName || 'variable');
+                const expectedValue = props.expectedValue;
+                node = new WaitForBlackboardCondition<T>(waitVariableName, expectedValue);
+                break;
+
+            // ========== 黑板条件节点 ==========
+            case 'blackboard-value-comparison':
+                const operatorStr = String(props.operator || props.compareOperator || 'equal');
+                // 映射操作符字符串到枚举
+                let operator: CompareOperator;
+                switch (operatorStr.toLowerCase()) {
+                    case 'equal': operator = CompareOperator.Equal; break;
+                    case 'notequal': case 'not_equal': operator = CompareOperator.NotEqual; break;
+                    case 'greater': operator = CompareOperator.Greater; break;
+                    case 'greaterorequal': case 'greater_or_equal': operator = CompareOperator.GreaterOrEqual; break;
+                    case 'less': operator = CompareOperator.Less; break;
+                    case 'lessorequal': case 'less_or_equal': operator = CompareOperator.LessOrEqual; break;
+                    case 'contains': operator = CompareOperator.Contains; break;
+                    case 'notcontains': case 'not_contains': operator = CompareOperator.NotContains; break;
+                    default: operator = CompareOperator.Equal; break;
+                }
+                
+                node = new ExecuteActionConditional<T>((ctx: T) => {
+                    const conditional = new BlackboardValueComparison<T>(
+                        String(props.variableName || 'variable'),
+                        operator,
+                        props.compareValue,
+                        props.compareVariable ? String(props.compareVariable) : undefined
+                    );
+                    return conditional.update(ctx);
+                });
+                break;
+
+            case 'blackboard-variable-exists':
+                node = new ExecuteActionConditional<T>((ctx: T) => {
+                    const conditional = new BlackboardVariableExists<T>(
+                        String(props.variableName || 'variable'),
+                        props.invert === true
+                    );
+                    return conditional.update(ctx);
+                });
+                break;
+
+            case 'blackboard-variable-type-check':
+                const expectedTypeStr = String(props.expectedType || 'string');
+                // 映射类型字符串到枚举
+                const expectedType = BehaviorTreeBuilder.mapToBlackboardType(expectedTypeStr);
+                
+                node = new ExecuteActionConditional<T>((ctx: T) => {
+                    const conditional = new BlackboardVariableTypeCheck<T>(
+                        String(props.variableName || 'variable'),
+                        expectedType
+                    );
+                    return conditional.update(ctx);
+                });
+                break;
+
+            case 'blackboard-variable-range-check':
+                node = new ExecuteActionConditional<T>((ctx: T) => {
+                    const conditional = new BlackboardVariableRangeCheck<T>(
+                        String(props.variableName || 'variable'),
+                        Number(props.minValue) || 0,
+                        Number(props.maxValue) || 100
+                    );
+                    return conditional.update(ctx);
+                });
+                break;
+
+            // ========== 通用条件节点 ==========
+            case 'numeric-comparison':
+                node = new ExecuteActionConditional<T>((ctx: T) => {
+                    const conditional = new NumericComparison<T>(
+                        String(props.propertyPath || 'value'),
+                        String(props.compareOperator || 'equal') as 'greater' | 'less' | 'equal' | 'greaterEqual' | 'lessEqual' | 'notEqual',
+                        Number(props.compareValue) || 0
+                    );
+                    return conditional.update(ctx);
+                });
+                break;
+
+            case 'property-exists':
+                node = new ExecuteActionConditional<T>((ctx: T) => {
+                    const conditional = new PropertyExists<T>(String(props.propertyPath || 'property'));
+                    return conditional.update(ctx);
+                });
+                break;
+
+            // ========== ECS集成节点 ==========
+            case 'has-component':
+                try {
+                    const componentName = props.componentType || 'Component';
+                    // 这里需要根据组件名称获取实际的组件类型
+                    // 在实际应用中，应该从ECS系统注册的组件类型中获取
+                    node = new ExecuteActionConditional<T>((ctx: T) => {
+                        console.warn(`has-component节点需要在ECS环境中使用，组件类型: ${componentName}`);
+                        return TaskStatus.Failure;
+                    });
+                } catch (error) {
+                    console.warn('ECS集成模块未找到，has-component节点将返回失败');
+                    node = new ExecuteActionConditional<T>(() => TaskStatus.Failure);
+                }
+                break;
+
+            case 'add-component':
+                try {
+                    const componentName = props.componentType || 'Component';
+                    node = new ExecuteAction<T>((ctx: T) => {
+                        console.warn(`add-component节点需要在ECS环境中使用，组件类型: ${componentName}`);
+                        return TaskStatus.Failure;
+                    });
+                } catch (error) {
+                    console.warn('ECS集成模块未找到，add-component节点将返回失败');
+                    node = new ExecuteAction<T>(() => TaskStatus.Failure);
+                }
+                break;
+
+            case 'remove-component':
+                try {
+                    const componentName = props.componentType || 'Component';
+                    node = new ExecuteAction<T>((ctx: T) => {
+                        console.warn(`remove-component节点需要在ECS环境中使用，组件类型: ${componentName}`);
+                        return TaskStatus.Failure;
+                    });
+                } catch (error) {
+                    console.warn('ECS集成模块未找到，remove-component节点将返回失败');
+                    node = new ExecuteAction<T>(() => TaskStatus.Failure);
+                }
+                break;
+
+            case 'has-tag':
+                try {
+                    const tag = Number(props.tag) || 0;
+                    node = new ExecuteActionConditional<T>((ctx: T) => {
+                        console.warn(`has-tag节点需要在ECS环境中使用，标签: ${tag}`);
+                        return TaskStatus.Failure;
+                    });
+                } catch (error) {
+                    console.warn('ECS集成模块未找到，has-tag节点将返回失败');
+                    node = new ExecuteActionConditional<T>(() => TaskStatus.Failure);
+                }
+                break;
+
+            case 'modify-component':
+                try {
+                    const componentName = props.componentType || 'Component';
+                    node = new ExecuteAction<T>((ctx: T) => {
+                        console.warn(`modify-component节点需要在ECS环境中使用，组件类型: ${componentName}`);
+                        return TaskStatus.Failure;
+                    });
+                } catch (error) {
+                    console.warn('ECS集成模块未找到，modify-component节点将返回失败');
+                    node = new ExecuteAction<T>(() => TaskStatus.Failure);
+                }
+                break;
+
+            case 'wait-time':
+                // 使用基础的等待实现，避免ECS依赖
+                const waitTimeValue = Number(props.waitTime) || 1.0;
+                let waitStartTime = 0;
+                let waitIsStarted = false;
+                
+                node = new ExecuteAction<T>((ctx: T) => {
+                    if (!waitIsStarted) {
+                        waitStartTime = performance.now();
+                        waitIsStarted = true;
+                    }
+                    
+                    const elapsed = (performance.now() - waitStartTime) / 1000;
+                    if (elapsed >= waitTimeValue) {
+                        waitIsStarted = false;
+                        return TaskStatus.Success;
+                    }
+                    return TaskStatus.Running;
+                });
+                break;
+
+            case 'is-active':
+                try {
+                    const checkHierarchy = props.checkHierarchy !== false;
+                    node = new ExecuteActionConditional<T>((ctx: T) => {
+                        console.warn(`is-active节点需要在ECS环境中使用，检查层级: ${checkHierarchy}`);
+                        return TaskStatus.Failure;
+                    });
+                } catch (error) {
+                    console.warn('ECS集成模块未找到，is-active节点将返回失败');
+                    node = new ExecuteActionConditional<T>(() => TaskStatus.Failure);
+                }
+                break;
+
+            case 'destroy-entity':
+                try {
+                    node = new ExecuteAction<T>((ctx: T) => {
+                        console.warn('destroy-entity节点需要在ECS环境中使用');
+                        return TaskStatus.Failure;
+                    });
+                } catch (error) {
+                    console.warn('ECS集成模块未找到，destroy-entity节点将返回失败');
+                    node = new ExecuteAction<T>(() => TaskStatus.Failure);
+                }
+                break;
+
+            // ========== 高级装饰器节点 ==========
+            case 'cooldown':
+                const cooldownTime = Number(props.cooldownTime) || 1.0;
+                node = new CooldownDecorator<T>(cooldownTime);
+                break;
+
+            case 'timeout':
+                const timeoutDuration = Number(props.timeoutDuration) || 5.0;
+                node = new TimeoutDecorator<T>(timeoutDuration);
+                break;
+
+            case 'chance':
+                const successChance = Number(props.successChance) || 0.5;
+                node = new ChanceDecorator<T>(successChance);
+                break;
+
             default:
                 console.warn('⚠️ 未知的节点类型:', nodeConfig.type, '，使用默认成功节点');
                 node = new ExecuteAction<T>(() => TaskStatus.Success);
@@ -1077,5 +1622,41 @@ export class BehaviorTreeBuilder<T> {
         }
 
         return () => TaskStatus.Success;
+    }
+
+    /**
+     * 替换对象中的黑板变量引用
+     * @param obj 要处理的对象
+     * @param blackboard 黑板实例
+     * @returns 替换后的对象
+     */
+    private static replaceBlackboardVariables(obj: any, blackboard: any): any {
+        if (obj === null || obj === undefined) {
+            return obj;
+        }
+        
+        if (typeof obj === 'string') {
+            // 处理字符串中的变量替换
+            return obj.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+                const value = blackboard.getValue(varName);
+                return value !== undefined ? String(value) : match;
+            });
+        }
+        
+        if (Array.isArray(obj)) {
+            // 处理数组
+            return obj.map(item => BehaviorTreeBuilder.replaceBlackboardVariables(item, blackboard));
+        }
+        
+        if (typeof obj === 'object') {
+            // 处理对象
+            const result: any = {};
+            for (const [key, value] of Object.entries(obj)) {
+                result[key] = BehaviorTreeBuilder.replaceBlackboardVariables(value, blackboard);
+            }
+            return result;
+        }
+        
+        return obj;
     }
 }
