@@ -1731,7 +1731,19 @@ export class BehaviorTreeBuilder<T> {
         }
         
         if (typeof obj === 'string') {
-            // 处理字符串中的变量替换
+            // 检查是否是纯黑板变量引用（如 "{{variableName}}"）
+            const pureVariableMatch = obj.match(/^{{\s*(\w+)\s*}}$/);
+            if (pureVariableMatch) {
+                // 纯变量引用，返回原始类型的值
+                const varName = pureVariableMatch[1];
+                const value = blackboard.getValue(varName);
+                if (value !== undefined) {
+                    return value; // 保持原始类型
+                }
+                return obj; // 变量不存在，返回原字符串
+            }
+            
+            // 包含变量的字符串模板，进行字符串替换
             return obj.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
                 const value = blackboard.getValue(varName);
                 return value !== undefined ? String(value) : match;
