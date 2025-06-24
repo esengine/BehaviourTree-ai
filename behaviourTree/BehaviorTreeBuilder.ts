@@ -607,17 +607,20 @@ export class BehaviorTreeBuilder<T> {
                     // 映射类型字符串到枚举
                     const blackboardType = BehaviorTreeBuilder.mapToBlackboardType(variable.type);
                     
+                    // 转换值类型以匹配黑板期望的类型
+                    const convertedValue = BehaviorTreeBuilder.convertBlackboardValue(variable.value, blackboardType);
+                    
                     blackboard.defineVariable(
                         variable.name,
                         blackboardType,
-                        variable.value,
+                        convertedValue,
                         {
                             description: variable.description,
                             group: variable.group || 'Default',
                             readonly: variable.constraints?.readonly ?? false
                         }
                     );
-                    console.log(`  ✅ ${variable.name}: ${variable.value} (${variable.type})`);
+                    console.log(`  ✅ ${variable.name}: ${convertedValue} (${variable.type})`);
                 }
             }
 
@@ -684,6 +687,98 @@ export class BehaviorTreeBuilder<T> {
             default:
                 console.warn(`未知的变量类型: ${typeString}, 默认使用Object类型`);
                 return BlackboardValueType.Object;
+        }
+    }
+
+    /**
+     * 转换黑板变量值到正确的类型
+     * @param value 原始值（通常来自JSON，都是字符串）
+     * @param targetType 目标类型
+     * @returns 转换后的值
+     */
+    private static convertBlackboardValue(value: any, targetType: BlackboardValueType): any {
+        if (value === null || value === undefined) {
+            return value;
+        }
+
+        switch (targetType) {
+            case BlackboardValueType.String:
+                return String(value);
+            
+            case BlackboardValueType.Number:
+                if (typeof value === 'string') {
+                    const num = parseFloat(value);
+                    if (isNaN(num)) {
+                        console.warn(`无法将 "${value}" 转换为数字，使用默认值 0`);
+                        return 0;
+                    }
+                    return num;
+                }
+                return typeof value === 'number' ? value : 0;
+            
+            case BlackboardValueType.Boolean:
+                if (typeof value === 'string') {
+                    return value.toLowerCase() === 'true';
+                }
+                return Boolean(value);
+            
+            case BlackboardValueType.Vector2:
+                if (typeof value === 'string') {
+                    try {
+                        const parsed = JSON.parse(value);
+                        return parsed && typeof parsed === 'object' && 'x' in parsed && 'y' in parsed 
+                            ? parsed 
+                            : { x: 0, y: 0 };
+                    } catch {
+                        console.warn(`无法解析Vector2值 "${value}"，使用默认值 {x:0, y:0}`);
+                        return { x: 0, y: 0 };
+                    }
+                }
+                return value && typeof value === 'object' && 'x' in value && 'y' in value 
+                    ? value 
+                    : { x: 0, y: 0 };
+            
+            case BlackboardValueType.Vector3:
+                if (typeof value === 'string') {
+                    try {
+                        const parsed = JSON.parse(value);
+                        return parsed && typeof parsed === 'object' && 'x' in parsed && 'y' in parsed && 'z' in parsed
+                            ? parsed 
+                            : { x: 0, y: 0, z: 0 };
+                    } catch {
+                        console.warn(`无法解析Vector3值 "${value}"，使用默认值 {x:0, y:0, z:0}`);
+                        return { x: 0, y: 0, z: 0 };
+                    }
+                }
+                return value && typeof value === 'object' && 'x' in value && 'y' in value && 'z' in value
+                    ? value 
+                    : { x: 0, y: 0, z: 0 };
+            
+            case BlackboardValueType.Object:
+                if (typeof value === 'string') {
+                    try {
+                        return JSON.parse(value);
+                    } catch {
+                        console.warn(`无法解析Object值 "${value}"，使用默认值 {}`);
+                        return {};
+                    }
+                }
+                return typeof value === 'object' ? value : {};
+            
+            case BlackboardValueType.Array:
+                if (typeof value === 'string') {
+                    try {
+                        const parsed = JSON.parse(value);
+                        return Array.isArray(parsed) ? parsed : [];
+                    } catch {
+                        console.warn(`无法解析Array值 "${value}"，使用默认值 []`);
+                        return [];
+                    }
+                }
+                return Array.isArray(value) ? value : [];
+            
+            default:
+                return value;
         }
     }
 
