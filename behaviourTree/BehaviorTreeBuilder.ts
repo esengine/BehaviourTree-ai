@@ -1085,29 +1085,6 @@ export class BehaviorTreeBuilder<T> {
                 }
                 break;
                 
-            case 'set-blackboard-value':
-                const variableName = props.variableName;
-                const value = props.value;
-                node = new ExecuteAction<T>((ctx: T) => {
-                    const blackboard = (ctx as any).blackboard;
-                    if (blackboard && variableName) {
-                        let finalValue = value;
-                        
-                        // 支持变量替换
-                        if (typeof value === 'string') {
-                            finalValue = value.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
-                                const val = blackboard.getValue(varName);
-                                return val !== undefined ? String(val) : match;
-                            });
-                        }
-                        
-                        blackboard.setValue(variableName, finalValue, props.force || false);
-                        console.log(`[BehaviorTree] 设置变量 ${variableName} = ${finalValue}`);
-                    }
-                    return TaskStatus.Success;
-                });
-                break;
-                
             case 'execute-action':
                 const actionCode = props.actionCode;
                 if (actionCode && typeof actionCode === 'string') {
@@ -1400,13 +1377,13 @@ export class BehaviorTreeBuilder<T> {
                 break;
 
             case 'math-blackboard-operation':
-                const operation = String(props.operation || 'add');
-                const operand2Value = typeof props.operand2 === 'string' ? props.operand2 : Number(props.operand2 || 0);
+                const mathOperation = String(props.operation || 'add');
+                const mathOperand2Value = typeof props.operand2 === 'string' ? props.operand2 : Number(props.operand2 || 0);
                 node = new MathBlackboardOperation<T>(
                     String(props.targetVariable || 'result'),
                     String(props.operand1Variable || 'operand1'),
-                    operand2Value,
-                    MathOperation[operation as keyof typeof MathOperation] || MathOperation.Add
+                    mathOperand2Value,
+                    MathOperation[mathOperation as keyof typeof MathOperation] || MathOperation.Add
                 );
                 break;
 
@@ -1418,9 +1395,9 @@ export class BehaviorTreeBuilder<T> {
                 break;
 
             case 'wait-blackboard-condition':
-                const waitVariableName = String(props.variableName || 'variable');
+                const waitVarName = String(props.variableName || 'variable');
                 const expectedValue = props.expectedValue;
-                node = new WaitForBlackboardCondition<T>(waitVariableName, expectedValue);
+                node = new WaitForBlackboardCondition<T>(waitVarName, expectedValue);
                 break;
 
             // ========== 黑板条件节点 ==========

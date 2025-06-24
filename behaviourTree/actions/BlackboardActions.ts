@@ -59,10 +59,78 @@ export class SetBlackboardValue<T> extends Behavior<T> {
             valueToSet = blackboard.getValue(this.sourceVariable);
         } else {
             valueToSet = this.value;
+            
+            // 处理黑板变量引用，如 "{{variableName}}"
+            if (typeof valueToSet === 'string') {
+                // 检查是否是纯黑板变量引用（如 "{{variableName}}"）
+                const pureVariableMatch = valueToSet.match(/^{{\s*(\w+)\s*}}$/);
+                if (pureVariableMatch) {
+                    // 纯变量引用，返回原始类型的值
+                    const varName = pureVariableMatch[1];
+                    if (blackboard.hasVariable(varName)) {
+                        valueToSet = blackboard.getValue(varName);
+                    } else {
+                        console.warn(`SetBlackboardValue: 引用的变量 "${varName}" 不存在`);
+                        return TaskStatus.Failure;
+                    }
+                } else {
+                    // 包含变量的字符串模板，进行字符串替换
+                    valueToSet = valueToSet.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+                        if (blackboard.hasVariable(varName)) {
+                            const value = blackboard.getValue(varName);
+                            return value !== undefined ? String(value) : match;
+                        }
+                        return match;
+                    });
+                }
+            }
+        }
+
+        // 获取目标变量的类型定义，确保类型匹配
+        const targetVariableDef = blackboard.getVariableDefinition(this.variableName);
+        if (targetVariableDef && valueToSet !== null && valueToSet !== undefined) {
+            // 根据目标变量类型转换值
+            valueToSet = this.convertValueToTargetType(valueToSet, targetVariableDef.type);
         }
 
         const success = blackboard.setValue(this.variableName, valueToSet, this.force);
         return success ? TaskStatus.Success : TaskStatus.Failure;
+    }
+
+    /**
+     * 将值转换为目标类型
+     */
+    private convertValueToTargetType(value: any, targetType: any): any {
+        if (value === null || value === undefined) {
+            return value;
+        }
+
+        // 处理枚举值和字符串值
+        const typeStr = targetType === BlackboardValueType.Number || targetType === 'number' ? 'number' :
+                       targetType === BlackboardValueType.String || targetType === 'string' ? 'string' :
+                       targetType === BlackboardValueType.Boolean || targetType === 'boolean' ? 'boolean' :
+                       'unknown';
+
+        // 如果已经是正确类型，直接返回
+        switch (typeStr) {
+            case 'string':
+                return typeof value === 'string' ? value : String(value);
+            case 'number':
+                if (typeof value === 'number') return value;
+                if (typeof value === 'string') {
+                    const num = parseFloat(value);
+                    return isNaN(num) ? 0 : num;
+                }
+                return Number(value) || 0;
+            case 'boolean':
+                if (typeof value === 'boolean') return value;
+                if (typeof value === 'string') {
+                    return value.toLowerCase() === 'true';
+                }
+                return Boolean(value);
+            default:
+                return value;
+        }
     }
 }
 
