@@ -14,7 +14,9 @@ export * from './Blackboard';
 export type { 
     BehaviorTreeJSONConfig,
     BehaviorTreeNodeConfig,
-    BlackboardVariableConfig
+    BlackboardVariableConfig,
+    ExecutionContext,
+    BehaviorTreeBuildResult
 } from './BehaviorTreeBuilder';
 
 // Actions

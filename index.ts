@@ -25,7 +25,9 @@ export {
     BlackboardValueType,
     BehaviorTreeJSONConfig,
     BehaviorTreeNodeConfig,
-    BlackboardVariableConfig
+    BlackboardVariableConfig,
+    ExecutionContext,
+    BehaviorTreeBuildResult
 } from './behaviourTree/index';
 
 // 事件系统导出
