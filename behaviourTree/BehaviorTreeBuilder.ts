@@ -27,24 +27,24 @@ import { AbortTypes } from './composites/AbortTypes';
 import { Blackboard, BlackboardValueType } from './Blackboard';
 
 // 黑板动作节点导入
-import { 
-    SetBlackboardValue, 
-    AddToBlackboardValue, 
-    ToggleBlackboardBool, 
-    ResetBlackboardVariable, 
-    MathBlackboardOperation, 
+import {
+    SetBlackboardValue,
+    AddToBlackboardValue,
+    ToggleBlackboardBool,
+    ResetBlackboardVariable,
+    MathBlackboardOperation,
     MathOperation,
     LogBlackboardValue,
-    WaitForBlackboardCondition 
+    WaitForBlackboardCondition
 } from './actions/BlackboardActions';
 
 // 黑板条件节点导入
-import { 
-    BlackboardValueComparison, 
-    CompareOperator, 
-    BlackboardVariableExists, 
+import {
+    BlackboardValueComparison,
+    CompareOperator,
+    BlackboardVariableExists,
     BlackboardVariableTypeCheck,
-    BlackboardVariableRangeCheck 
+    BlackboardVariableRangeCheck
 } from './conditionals/BlackboardConditionals';
 
 // 通用条件节点导入
@@ -56,7 +56,7 @@ import { TimeoutDecorator } from './decorators/TimeoutDecorator';
 import { ChanceDecorator } from './decorators/ChanceDecorator';
 
 // ECS集成节点导入
-import { 
+import {
     HasComponentCondition,
     AddComponentAction,
     RemoveComponentAction,
@@ -553,20 +553,17 @@ export class BehaviorTreeBuilder<T> {
      */
     public static fromConfig<T>(config: BehaviorTreeConfig, context: T): BehaviorTree<T> {
         try {
-            console.log('🌳 开始从配置创建行为树:', config);
-            
+
             if (!config || !config.tree) {
                 throw new Error('配置无效：缺少tree属性');
             }
 
             const rootNode = BehaviorTreeBuilder.createNodeFromConfig<T>(config.tree);
             const updatePeriod = config.metadata?.updatePeriod ?? 0.2;
-            
-            console.log('✅ 行为树创建成功, 更新周期:', updatePeriod);
+
             return new BehaviorTree<T>(context, rootNode, updatePeriod);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error('❌ 从配置创建行为树失败:', error);
             throw new Error(`从配置创建行为树失败: ${errorMessage}`);
         }
     }
@@ -590,12 +587,11 @@ export class BehaviorTreeBuilder<T> {
      * ```
      */
     public static fromBehaviorTreeConfig<T extends ExecutionContext = ExecutionContext>(
-        config: BehaviorTreeJSONConfig, 
+        config: BehaviorTreeJSONConfig,
         context?: T
     ): BehaviorTreeBuildResult<T> {
         try {
-            console.log('🌳 开始从配置创建行为树:', config.metadata?.name || '未命名');
-            
+
             // 验证配置
             if (!config || !config.nodes || config.nodes.length === 0) {
                 throw new Error('配置无效：缺少nodes属性或nodes为空');
@@ -604,14 +600,13 @@ export class BehaviorTreeBuilder<T> {
             // 创建黑板并初始化变量
             const blackboard = new Blackboard();
             if (config.blackboard && config.blackboard.length > 0) {
-                console.log('📋 初始化黑板变量...');
                 for (const variable of config.blackboard) {
                     // 映射类型字符串到枚举
                     const blackboardType = BehaviorTreeBuilder.mapToBlackboardType(variable.type);
-                    
+
                     // 转换值类型以匹配黑板期望的类型
                     const convertedValue = BehaviorTreeBuilder.convertBlackboardValue(variable.value, blackboardType);
-                    
+
                     blackboard.defineVariable(
                         variable.name,
                         blackboardType,
@@ -622,7 +617,6 @@ export class BehaviorTreeBuilder<T> {
                             readonly: variable.constraints?.readonly ?? false
                         }
                     );
-                    console.log(`  ✅ ${variable.name}: ${convertedValue} (${variable.type})`);
                 }
             }
 
@@ -631,9 +625,8 @@ export class BehaviorTreeBuilder<T> {
             enhancedContext.blackboard = blackboard;
 
             // 构建节点树
-            console.log('🔧 构建节点树...');
             const nodeMap = new Map<string, BehaviorTreeNodeConfig>();
-            
+
             // 建立节点映射
             for (const node of config.nodes) {
                 nodeMap.set(node.id, node);
@@ -647,20 +640,15 @@ export class BehaviorTreeBuilder<T> {
 
             // 递归构建节点树
             const rootNode = BehaviorTreeBuilder.createNodeFromJSONConfig<T>(rootNodeConfig, nodeMap, enhancedContext);
-            
+
             // 创建行为树
             const updatePeriod = config.metadata?.updatePeriod ?? 0.2;
             const tree = new BehaviorTree<T>(enhancedContext, rootNode, updatePeriod, false, blackboard);
-            
-            console.log('✅ 行为树创建成功');
-            console.log(`   📊 节点总数: ${config.nodes.length}`);
-            console.log(`   📋 变量总数: ${config.blackboard?.length || 0}`);
-            
+
             return { tree, blackboard, context: enhancedContext };
-            
+
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error('❌ 从配置创建行为树失败:', error);
             throw new Error(`从配置创建行为树失败: ${errorMessage}`);
         }
     }
@@ -724,7 +712,7 @@ export class BehaviorTreeBuilder<T> {
         switch (targetType) {
             case BlackboardValueType.String:
                 return String(value);
-            
+
             case BlackboardValueType.Number:
                 if (typeof value === 'string') {
                     const num = parseFloat(value);
@@ -735,7 +723,7 @@ export class BehaviorTreeBuilder<T> {
                     return num;
                 }
                 return typeof value === 'number' ? value : 0;
-            
+
             case BlackboardValueType.Boolean:
                 if (typeof value === 'string') {
                     // 处理空字符串的情况
@@ -743,29 +731,29 @@ export class BehaviorTreeBuilder<T> {
                     return value.toLowerCase() === 'true';
                 }
                 return Boolean(value);
-            
+
             case BlackboardValueType.Vector2:
                 if (typeof value === 'string') {
                     try {
                         const parsed = JSON.parse(value);
-                        return parsed && typeof parsed === 'object' && 'x' in parsed && 'y' in parsed 
-                            ? parsed 
+                        return parsed && typeof parsed === 'object' && 'x' in parsed && 'y' in parsed
+                            ? parsed
                             : { x: 0, y: 0 };
                     } catch {
                         console.warn(`无法解析Vector2值 "${value}"，使用默认值 {x:0, y:0}`);
                         return { x: 0, y: 0 };
                     }
                 }
-                return value && typeof value === 'object' && 'x' in value && 'y' in value 
-                    ? value 
+                return value && typeof value === 'object' && 'x' in value && 'y' in value
+                    ? value
                     : { x: 0, y: 0 };
-            
+
             case BlackboardValueType.Vector3:
                 if (typeof value === 'string') {
                     try {
                         const parsed = JSON.parse(value);
                         return parsed && typeof parsed === 'object' && 'x' in parsed && 'y' in parsed && 'z' in parsed
-                            ? parsed 
+                            ? parsed
                             : { x: 0, y: 0, z: 0 };
                     } catch {
                         console.warn(`无法解析Vector3值 "${value}"，使用默认值 {x:0, y:0, z:0}`);
@@ -773,9 +761,9 @@ export class BehaviorTreeBuilder<T> {
                     }
                 }
                 return value && typeof value === 'object' && 'x' in value && 'y' in value && 'z' in value
-                    ? value 
+                    ? value
                     : { x: 0, y: 0, z: 0 };
-            
+
             case BlackboardValueType.Object:
                 if (typeof value === 'string') {
                     try {
@@ -786,7 +774,7 @@ export class BehaviorTreeBuilder<T> {
                     }
                 }
                 return typeof value === 'object' ? value : {};
-            
+
             case BlackboardValueType.Array:
                 if (typeof value === 'string') {
                     try {
@@ -798,7 +786,7 @@ export class BehaviorTreeBuilder<T> {
                     }
                 }
                 return Array.isArray(value) ? value : [];
-            
+
             default:
                 return value;
         }
@@ -810,10 +798,9 @@ export class BehaviorTreeBuilder<T> {
      * @returns 创建的节点实例
      */
     private static createNodeFromConfig<T>(nodeConfig: NodeConfig): Behavior<T> {
-        console.log('🔧 创建节点:', nodeConfig.type, nodeConfig.id);
-        
+
         let node: Behavior<T>;
-        
+
         // 根据节点类型创建对应的节点实例
         switch (nodeConfig.type) {
             // 复合节点
@@ -824,7 +811,7 @@ export class BehaviorTreeBuilder<T> {
                 );
                 node = new Sequence<T>(sequenceAbortType);
                 break;
-                
+
             case 'Selector':
                 const selectorAbortValue = nodeConfig.properties?.abortType?.value;
                 const selectorAbortType = BehaviorTreeBuilder.getAbortType(
@@ -832,19 +819,19 @@ export class BehaviorTreeBuilder<T> {
                 );
                 node = new Selector<T>(selectorAbortType);
                 break;
-                
+
             case 'Parallel':
                 node = new Parallel<T>();
                 break;
-                
+
             case 'ParallelSelector':
                 node = new ParallelSelector<T>();
                 break;
-                
+
             case 'RandomSelector':
                 node = new RandomSelector<T>();
                 break;
-                
+
             case 'RandomSequence':
                 node = new RandomSequence<T>();
                 break;
@@ -853,25 +840,25 @@ export class BehaviorTreeBuilder<T> {
             case 'AlwaysSucceed':
                 node = new AlwaysSucceed<T>();
                 break;
-                
+
             case 'AlwaysFail':
                 node = new AlwaysFail<T>();
                 break;
-                
+
             case 'Inverter':
                 node = new Inverter<T>();
                 break;
-                
+
             case 'Repeater':
                 const countValue = nodeConfig.properties?.count?.value;
                 const count = typeof countValue === 'number' ? countValue : 1;
                 node = new Repeater<T>(count);
                 break;
-                
+
             case 'UntilSuccess':
                 node = new UntilSuccess<T>();
                 break;
-                
+
             case 'UntilFail':
                 node = new UntilFail<T>();
                 break;
@@ -882,13 +869,13 @@ export class BehaviorTreeBuilder<T> {
                 const message = typeof messageValue === 'string' ? messageValue : 'Default log message';
                 node = new LogAction<T>(message);
                 break;
-                
+
             case 'WaitAction':
                 const waitTimeValue = nodeConfig.properties?.waitTime?.value;
                 const waitTime = typeof waitTimeValue === 'number' ? waitTimeValue : 1.0;
                 node = new WaitAction<T>(waitTime);
                 break;
-                
+
             case 'ExecuteAction':
                 // 对于自定义动作，我们创建一个默认的执行函数
                 const actionCode = nodeConfig.properties?.actionCode?.value;
@@ -940,7 +927,6 @@ export class BehaviorTreeBuilder<T> {
             }
         }
 
-        console.log('✅ 节点创建完成:', nodeConfig.type);
         return node;
     }
 
@@ -971,15 +957,13 @@ export class BehaviorTreeBuilder<T> {
      * @returns 创建的节点实例
      */
     private static createNodeFromJSONConfig<T extends { blackboard?: Blackboard }>(
-        nodeConfig: BehaviorTreeNodeConfig, 
+        nodeConfig: BehaviorTreeNodeConfig,
         nodeMap: Map<string, BehaviorTreeNodeConfig>,
         context: T
     ): Behavior<T> {
-        console.log('🔧 创建节点:', nodeConfig.type, nodeConfig.name);
-        
         let node: Behavior<T>;
         const props = nodeConfig.properties || {};
-        
+
         // 根据节点类型创建对应的节点实例
         switch (nodeConfig.type) {
             // 根节点 - 通常是一个简单的传递节点
@@ -1001,12 +985,12 @@ export class BehaviorTreeBuilder<T> {
                 const selectorAbortType = BehaviorTreeBuilder.getAbortType(String(props.abortType || 'None'));
                 node = new Selector<T>(selectorAbortType);
                 break;
-                
+
             case 'sequence':
                 const sequenceAbortType = BehaviorTreeBuilder.getAbortType(String(props.abortType || 'None'));
                 node = new Sequence<T>(sequenceAbortType);
                 break;
-                
+
             case 'parallel':
                 node = new Parallel<T>();
                 break;
@@ -1029,7 +1013,7 @@ export class BehaviorTreeBuilder<T> {
                 const count = typeof countProp === 'number' ? countProp : -1; // -1 表示无限重复
                 node = new Repeater<T>(count);
                 break;
-                
+
             case 'inverter':
                 node = new Inverter<T>();
                 break;
@@ -1052,16 +1036,16 @@ export class BehaviorTreeBuilder<T> {
 
             case 'conditional-decorator':
                 // 创建条件装饰器 - 使用新的条件工厂
-                const isBlackboardCompare = nodeConfig.condition?.type === 'blackboard-value-comparison' || 
-                                           props.conditionType === 'blackboardCompare';
-                
+                const isBlackboardCompare = nodeConfig.condition?.type === 'blackboard-value-comparison' ||
+                    props.conditionType === 'blackboardCompare';
+
                 // 使用条件工厂创建条件
                 const conditionalNode = ConditionFactory.createCondition(
                     isBlackboardCompare ? { type: 'blackboard-value-comparison' } : nodeConfig.condition,
                     props,
                     context
                 );
-                
+
                 const shouldReevaluate = BehaviorTreeBuilder.extractNestedValue(props.shouldReevaluate) !== false;
                 const abortType = BehaviorTreeBuilder.getAbortType(BehaviorTreeBuilder.extractNestedValue(props.abortType) || 'None');
                 node = new ConditionalDecorator<T>(conditionalNode, shouldReevaluate, abortType);
@@ -1074,7 +1058,7 @@ export class BehaviorTreeBuilder<T> {
                 node = new ExecuteAction<T>((ctx: T) => {
                     const blackboard = (ctx as any).blackboard;
                     let finalMessage = message;
-                    
+
                     // 简单的变量替换 {{variableName}}
                     if (blackboard && typeof message === 'string') {
                         finalMessage = message.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
@@ -1082,7 +1066,7 @@ export class BehaviorTreeBuilder<T> {
                             return value !== undefined ? String(value) : match;
                         });
                     }
-                    
+
                     console.log(`[BehaviorTree] ${finalMessage}`);
                     if ((ctx as any).log) {
                         (ctx as any).log(finalMessage, props.logLevel || 'info');
@@ -1090,7 +1074,7 @@ export class BehaviorTreeBuilder<T> {
                     return TaskStatus.Success;
                 });
                 break;
-                
+
             case 'wait-action':
                 const waitTimeProp = props.waitTime;
                 const waitTime = typeof waitTimeProp === 'number' ? waitTimeProp : 1.0;
@@ -1117,7 +1101,7 @@ export class BehaviorTreeBuilder<T> {
                     node = new ExecuteAction<T>(() => TaskStatus.Failure);
                 }
                 break;
-                
+
             case 'execute-action':
                 const actionCode = props.actionCode;
                 if (actionCode && typeof actionCode === 'string') {
@@ -1161,8 +1145,8 @@ export class BehaviorTreeBuilder<T> {
 
             case 'condition-custom':
                 const conditionCodeProp = props.conditionCode;
-                const conditionCode = typeof conditionCodeProp === 'string' ? conditionCodeProp : 
-                    (typeof conditionCodeProp === 'object' && conditionCodeProp && 'value' in conditionCodeProp ? 
+                const conditionCode = typeof conditionCodeProp === 'string' ? conditionCodeProp :
+                    (typeof conditionCodeProp === 'object' && conditionCodeProp && 'value' in conditionCodeProp ?
                         String((conditionCodeProp as { value: unknown }).value) : undefined);
                 if (conditionCode && typeof conditionCode === 'string') {
                     try {
@@ -1246,17 +1230,17 @@ export class BehaviorTreeBuilder<T> {
                                 console.warn(`[event-action] 未找到事件注册表，请在执行上下文中提供 eventRegistry`);
                                 return TaskStatus.Failure;
                             }
-                            
+
                             // 获取事件处理器
-                            const handler = eventRegistry.getActionHandler ? 
+                            const handler = eventRegistry.getActionHandler ?
                                 eventRegistry.getActionHandler(eventActionName) :
                                 eventRegistry.handlers?.get(eventActionName);
-                            
+
                             if (!handler) {
                                 console.warn(`[event-action] 未找到事件处理器: ${eventActionName}`);
                                 return TaskStatus.Failure;
                             }
-                            
+
                             // 解析参数
                             let parameters = {};
                             if (props.parameters) {
@@ -1269,17 +1253,17 @@ export class BehaviorTreeBuilder<T> {
                                 } else {
                                     parameters = props.parameters;
                                 }
-                                
+
                                 // 支持黑板变量替换
                                 const blackboard = (ctx as any).blackboard;
                                 if (blackboard) {
                                     parameters = BehaviorTreeBuilder.replaceBlackboardVariables(parameters, blackboard);
                                 }
                             }
-                            
+
                             // 执行事件处理器
                             const result = handler(ctx, parameters);
-                            
+
                             // 处理异步结果
                             if (result instanceof Promise) {
                                 if (props.async !== false) {
@@ -1294,7 +1278,7 @@ export class BehaviorTreeBuilder<T> {
                                     return TaskStatus.Running;
                                 }
                             }
-                            
+
                             // 处理同步结果
                             if (typeof result === 'string') {
                                 switch (result.toLowerCase()) {
@@ -1304,10 +1288,10 @@ export class BehaviorTreeBuilder<T> {
                                     default: return TaskStatus.Success;
                                 }
                             }
-                            
-                            return result === true ? TaskStatus.Success : 
-                                   result === false ? TaskStatus.Failure : TaskStatus.Success;
-                                   
+
+                            return result === true ? TaskStatus.Success :
+                                result === false ? TaskStatus.Failure : TaskStatus.Success;
+
                         } catch (error) {
                             console.error(`[event-action] 事件 ${eventActionName} 执行失败:`, error);
                             return TaskStatus.Failure;
@@ -1330,17 +1314,17 @@ export class BehaviorTreeBuilder<T> {
                                 console.warn(`[event-condition] 未找到事件注册表，请在执行上下文中提供 eventRegistry`);
                                 return TaskStatus.Failure;
                             }
-                            
+
                             // 获取条件处理器
-                            const checker = eventRegistry.getConditionHandler ? 
+                            const checker = eventRegistry.getConditionHandler ?
                                 eventRegistry.getConditionHandler(eventConditionName) :
                                 eventRegistry.handlers?.get(eventConditionName);
-                            
+
                             if (!checker) {
                                 console.warn(`[event-condition] 未找到条件处理器: ${eventConditionName}`);
                                 return TaskStatus.Failure;
                             }
-                            
+
                             // 解析参数
                             let parameters = {};
                             if (props.parameters) {
@@ -1353,25 +1337,25 @@ export class BehaviorTreeBuilder<T> {
                                 } else {
                                     parameters = props.parameters;
                                 }
-                                
+
                                 // 支持黑板变量替换
                                 const blackboard = (ctx as any).blackboard;
                                 if (blackboard) {
                                     parameters = BehaviorTreeBuilder.replaceBlackboardVariables(parameters, blackboard);
                                 }
                             }
-                            
+
                             // 执行条件检查
                             const result = checker(ctx, parameters);
-                            
+
                             // 处理异步结果
                             if (result instanceof Promise) {
                                 console.warn(`[event-condition] 条件 ${eventConditionName} 返回Promise，条件节点不支持异步操作`);
                                 return TaskStatus.Failure;
                             }
-                            
+
                             return result ? TaskStatus.Success : TaskStatus.Failure;
-                            
+
                         } catch (error) {
                             console.error(`[event-condition] 条件 ${eventConditionName} 检查失败:`, error);
                             return TaskStatus.Failure;
@@ -1451,7 +1435,7 @@ export class BehaviorTreeBuilder<T> {
                     case 'notcontains': case 'not_contains': operator = CompareOperator.NotContains; break;
                     default: operator = CompareOperator.Equal; break;
                 }
-                
+
                 node = new ExecuteActionConditional<T>((ctx: T) => {
                     const conditional = new BlackboardValueComparison<T>(
                         String(props.variableName || 'variable'),
@@ -1477,7 +1461,7 @@ export class BehaviorTreeBuilder<T> {
                 const expectedTypeStr = String(props.expectedType || 'string');
                 // 映射类型字符串到枚举
                 const expectedType = BehaviorTreeBuilder.mapToBlackboardType(expectedTypeStr);
-                
+
                 node = new ExecuteActionConditional<T>((ctx: T) => {
                     const conditional = new BlackboardVariableTypeCheck<T>(
                         String(props.variableName || 'variable'),
@@ -1590,13 +1574,13 @@ export class BehaviorTreeBuilder<T> {
                 const waitTimeValue = Number(props.waitTime) || 1.0;
                 let waitStartTime = 0;
                 let waitIsStarted = false;
-                
+
                 node = new ExecuteAction<T>((ctx: T) => {
                     if (!waitIsStarted) {
                         waitStartTime = performance.now();
                         waitIsStarted = true;
                     }
-                    
+
                     const elapsed = (performance.now() - waitStartTime) / 1000;
                     if (elapsed >= waitTimeValue) {
                         waitIsStarted = false;
@@ -1682,7 +1666,6 @@ export class BehaviorTreeBuilder<T> {
             }
         }
 
-        console.log('✅ 节点创建完成:', nodeConfig.type);
         return node;
     }
 
@@ -1702,7 +1685,7 @@ export class BehaviorTreeBuilder<T> {
             const conditionCode = typeof conditionCodeConfig === 'string' ? conditionCodeConfig :
                 (typeof conditionCodeConfig === 'object' && conditionCodeConfig && 'value' in conditionCodeConfig ?
                     String((conditionCodeConfig as { value: unknown }).value) : undefined);
-            
+
             if (conditionCode && typeof conditionCode === 'string') {
                 try {
                     const condFunc = new Function('context', `
@@ -1741,7 +1724,7 @@ export class BehaviorTreeBuilder<T> {
         if (obj === null || obj === undefined) {
             return obj;
         }
-        
+
         if (typeof obj === 'string') {
             // 检查是否是纯黑板变量引用（如 "{{variableName}}"）
             const pureVariableMatch = obj.match(/^{{\s*(\w+)\s*}}$/);
@@ -1754,19 +1737,19 @@ export class BehaviorTreeBuilder<T> {
                 }
                 return obj; // 变量不存在，返回原字符串
             }
-            
+
             // 包含变量的字符串模板，进行字符串替换
             return obj.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
                 const value = blackboard.getValue(varName);
                 return value !== undefined ? String(value) : match;
             });
         }
-        
+
         if (Array.isArray(obj)) {
             // 处理数组
             return obj.map(item => BehaviorTreeBuilder.replaceBlackboardVariables(item, blackboard));
         }
-        
+
         if (typeof obj === 'object') {
             // 处理对象
             const result: any = {};
@@ -1775,7 +1758,7 @@ export class BehaviorTreeBuilder<T> {
             }
             return result;
         }
-        
+
         return obj;
     }
 
@@ -1788,17 +1771,17 @@ export class BehaviorTreeBuilder<T> {
         if (prop === null || prop === undefined) {
             return prop;
         }
-        
+
         // 如果是简单值，直接返回
         if (typeof prop !== 'object') {
             return prop;
         }
-        
+
         // 如果有value属性，递归提取
         if ('value' in prop) {
             return BehaviorTreeBuilder.extractNestedValue(prop.value);
         }
-        
+
         return prop;
     }
 }
