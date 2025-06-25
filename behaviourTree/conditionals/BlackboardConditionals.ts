@@ -82,6 +82,7 @@ export class BlackboardValueComparison<T> implements IConditional<T> {
         }
 
         const leftValue = blackboard.getValue(this.variableName);
+        
         let rightValue: any;
 
         if (this.compareVariable) {

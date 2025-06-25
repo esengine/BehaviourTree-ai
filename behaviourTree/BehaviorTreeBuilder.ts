@@ -5,6 +5,8 @@ import { Composite } from './composites/Composite';
 import { Decorator } from './decorators/Decorator';
 import { ExecuteAction } from './actions/ExecuteAction';
 import { ExecuteActionConditional } from './conditionals/ExecuteActionConditional';
+import { IConditional } from './conditionals/IConditional';
+import { ConditionFactory } from './factories/ConditionFactory';
 import { LogAction } from './actions/LogAction';
 import { WaitAction } from './actions/WaitAction';
 import { BehaviorTreeReference } from './actions/BehaviorTreeReference';
@@ -1049,9 +1051,20 @@ export class BehaviorTreeBuilder<T> {
                 break;
 
             case 'conditional-decorator':
-                // 创建条件装饰器
-                const conditionFunc = BehaviorTreeBuilder.createConditionFunction<T>(nodeConfig.condition, context);
-                node = new ConditionalDecorator<T>(new ExecuteActionConditional<T>(conditionFunc), true);
+                // 创建条件装饰器 - 使用新的条件工厂
+                const isBlackboardCompare = nodeConfig.condition?.type === 'blackboard-value-comparison' || 
+                                           props.conditionType === 'blackboardCompare';
+                
+                // 使用条件工厂创建条件
+                const conditionalNode = ConditionFactory.createCondition(
+                    isBlackboardCompare ? { type: 'blackboard-value-comparison' } : nodeConfig.condition,
+                    props,
+                    context
+                );
+                
+                const shouldReevaluate = BehaviorTreeBuilder.extractNestedValue(props.shouldReevaluate) !== false;
+                const abortType = BehaviorTreeBuilder.getAbortType(BehaviorTreeBuilder.extractNestedValue(props.abortType) || 'None');
+                node = new ConditionalDecorator<T>(conditionalNode, shouldReevaluate, abortType);
                 break;
 
             // 动作节点
@@ -1372,9 +1385,11 @@ export class BehaviorTreeBuilder<T> {
 
             // ========== 黑板动作节点 ==========
             case 'set-blackboard-value':
-                const setVariableName = String(props.variableName || 'variable');
+                const rawVariableName = String(props.variableName || 'variable');
+                // 清理变量名，移除黑板变量引用语法 {{variableName}}
+                const setVariableName = rawVariableName.replace(/^\{\{|\}\}$/g, '');
                 const setValue = props.value;
-                const setSourceVariable = props.sourceVariable ? String(props.sourceVariable) : undefined;
+                const setSourceVariable = props.sourceVariable ? String(props.sourceVariable).replace(/^\{\{|\}\}$/g, '') : undefined;
                 const setForce = props.force === true;
                 node = new SetBlackboardValue<T>(setVariableName, setValue, setSourceVariable, setForce);
                 break;
@@ -1762,5 +1777,28 @@ export class BehaviorTreeBuilder<T> {
         }
         
         return obj;
+    }
+
+    /**
+     * 提取嵌套属性值
+     * @param prop 属性配置对象或直接值
+     * @returns 提取的值
+     */
+    private static extractNestedValue(prop: any): any {
+        if (prop === null || prop === undefined) {
+            return prop;
+        }
+        
+        // 如果是简单值，直接返回
+        if (typeof prop !== 'object') {
+            return prop;
+        }
+        
+        // 如果有value属性，递归提取
+        if ('value' in prop) {
+            return BehaviorTreeBuilder.extractNestedValue(prop.value);
+        }
+        
+        return prop;
     }
 }

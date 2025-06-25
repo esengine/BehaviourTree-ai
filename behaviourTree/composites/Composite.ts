@@ -66,15 +66,22 @@ export abstract class Composite<T> extends Behavior<T> {
     /**
      * 检查子节点中是否存在低优先级条件中止
      * 
-     * 遍历所有子节点，查找设置了LowerPriority中止类型且第一个子节点为条件节点的复合节点
+     * 遍历所有子节点，查找设置了LowerPriority中止类型的节点
      * 
      * @returns 如果存在低优先级条件中止则返回true，否则返回false
      * @private
      */
     private hasLowerPriorityConditionalAbortInChildren(): boolean {
         for (let i = 0; i < this._children.length; i++) {
-            // 检查是否为设置了中止类型的复合节点
-            let composite = this._children[i] as Composite<T>;
+            const child = this._children[i];
+            
+            // 检查条件装饰器的中止类型
+            if (isIConditional(child) && (child as any).abortType && AbortTypesExt.has((child as any).abortType, AbortTypes.LowerPriority)) {
+                return true;
+            }
+            
+            // 检查复合节点的中止类型
+            const composite = child as Composite<T>;
             if (composite != null && AbortTypesExt.has(composite.abortType, AbortTypes.LowerPriority)) {
                 // 确保第一个子节点是条件节点
                 if (composite.isFirstChildConditional())
@@ -150,22 +157,51 @@ export abstract class Composite<T> extends Behavior<T> {
     protected updateLowerPriorityAbortConditional(context: T, statusCheck: TaskStatus): void {
         // 检查当前索引之前的低优先级任务
         for (let i = 0; i < this._currentChildIndex; i++) {
-            const composite = this._children[i] as Composite<T>;
-            if (composite && AbortTypesExt.has(composite.abortType, AbortTypes.LowerPriority)) {
-                // 获取条件节点的状态
-                const child = composite._children[0];
-                if (child) {
-                    const status = this.updateConditionalNode(context, child);
-                    if (status !== statusCheck) {
-                        this._currentChildIndex = i;
+            const child = this._children[i];
+            
+            // 检查是否为条件装饰器或设置了LowerPriority中止类型的复合节点
+            if (isIConditional(child) && (child as any).abortType && AbortTypesExt.has((child as any).abortType, AbortTypes.LowerPriority)) {
+                // 直接是条件节点（如条件装饰器）
+                const status = this.updateConditionalNode(context, child);
+                // 对于选择器：当高优先级条件变为Success时，应该中止低优先级任务
+                // 对于序列器：当高优先级条件变为Failure时，应该中止低优先级任务
+                const shouldAbort = (statusCheck === TaskStatus.Failure) ? (status === TaskStatus.Success) : (status === TaskStatus.Failure);
+                
+                if (shouldAbort) {
+                    // 条件满足，需要中止当前执行，回到这个节点
+                    this._currentChildIndex = i;
 
-                        // 中止时使后续子节点无效
-                        const childrenLength = this._children.length;
-                        for (let j = i; j < childrenLength; j++) {
-                            this._children[j]!.invalidate();
-                        }
+                    // 中止时使后续子节点无效
+                    const childrenLength = this._children.length;
+                    for (let j = i + 1; j < childrenLength; j++) {
+                        this._children[j]!.invalidate();
+                    }
+                    
+                    break;
+                }
+            } else {
+                // 检查是否为设置了LowerPriority的复合节点
+                const composite = child as Composite<T>;
+                if (composite && AbortTypesExt.has(composite.abortType, AbortTypes.LowerPriority)) {
+                    // 获取复合节点的第一个子节点作为条件
+                    const firstChild = composite._children[0];
+                    if (firstChild && isIConditional(firstChild)) {
+                        const status = this.updateConditionalNode(context, firstChild);
+                        // 对于选择器：当高优先级条件变为Success时，应该中止低优先级任务
+                        // 对于序列器：当高优先级条件变为Failure时，应该中止低优先级任务
+                        const shouldAbort = (statusCheck === TaskStatus.Failure) ? (status === TaskStatus.Success) : (status === TaskStatus.Failure);
                         
-                        break;
+                        if (shouldAbort) {
+                            this._currentChildIndex = i;
+
+                            // 中止时使后续子节点无效
+                            const childrenLength = this._children.length;
+                            for (let j = i + 1; j < childrenLength; j++) {
+                                this._children[j]!.invalidate();
+                            }
+                            
+                            break;
+                        }
                     }
                 }
             }

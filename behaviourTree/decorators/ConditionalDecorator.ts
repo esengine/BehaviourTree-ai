@@ -1,6 +1,7 @@
 import { Decorator } from './Decorator';
 import { TaskStatus } from '../TaskStatus';
 import { IConditional, isIConditional } from '../conditionals/IConditional';
+import { AbortTypes } from '../composites/AbortTypes';
 
 /**
  * 装饰器，只有在满足条件的情况下才会运行其子程序。
@@ -8,11 +9,15 @@ import { IConditional, isIConditional } from '../conditionals/IConditional';
  */
 export class ConditionalDecorator<T> extends Decorator<T> implements IConditional<T> {
     public readonly discriminator: "IConditional" = "IConditional";
+    
+    /** 中止类型，决定节点在何种情况下会被中止 */
+    public abortType: AbortTypes = AbortTypes.None;
+    
     private _conditional: IConditional<T>;
     private _shouldReevaluate: boolean;
     private _conditionalStatus: TaskStatus = TaskStatus.Invalid;
 
-    constructor(conditional: IConditional<T>, shouldReevalute: boolean = true) {
+    constructor(conditional: IConditional<T>, shouldReevalute: boolean = true, abortType: AbortTypes = AbortTypes.None) {
         super();
 
         if (!isIConditional(conditional)) {
@@ -20,6 +25,7 @@ export class ConditionalDecorator<T> extends Decorator<T> implements IConditiona
         }
         this._conditional = conditional;
         this._shouldReevaluate = shouldReevalute;
+        this.abortType = abortType;
     }
 
     public override invalidate() {
