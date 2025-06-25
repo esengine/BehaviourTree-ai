@@ -697,8 +697,26 @@ export class BehaviorTreeBuilder<T> {
      * @returns 转换后的值
      */
     private static convertBlackboardValue(value: any, targetType: BlackboardValueType): any {
-        if (value === null || value === undefined) {
-            return value;
+        // 为不同类型提供合理的默认值
+        if (value === null || value === undefined || value === '') {
+            switch (targetType) {
+                case BlackboardValueType.String:
+                    return '';
+                case BlackboardValueType.Number:
+                    return 0;
+                case BlackboardValueType.Boolean:
+                    return false; // 布尔类型默认为false
+                case BlackboardValueType.Vector2:
+                    return { x: 0, y: 0 };
+                case BlackboardValueType.Vector3:
+                    return { x: 0, y: 0, z: 0 };
+                case BlackboardValueType.Object:
+                    return {};
+                case BlackboardValueType.Array:
+                    return [];
+                default:
+                    return null;
+            }
         }
 
         switch (targetType) {
@@ -718,6 +736,8 @@ export class BehaviorTreeBuilder<T> {
             
             case BlackboardValueType.Boolean:
                 if (typeof value === 'string') {
+                    // 处理空字符串的情况
+                    if (value === '') return false;
                     return value.toLowerCase() === 'true';
                 }
                 return Boolean(value);
