@@ -19,6 +19,14 @@ export type {
     BehaviorTreeBuildResult
 } from './BehaviorTreeBuilder';
 
+// 导出事件系统类型
+export type {
+    IBehaviorTreeContext,
+    ActionResult,
+    IEventHandler,
+    IConditionChecker
+} from './events/index';
+
 // Actions
 export * from './actions/index';
 

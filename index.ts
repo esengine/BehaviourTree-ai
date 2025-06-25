@@ -36,6 +36,8 @@ export {
     GlobalEventRegistry,
     IEventHandler,
     IConditionChecker,
+    IBehaviorTreeContext,
+    ActionResult,
     ActionHandler,
     ConditionChecker
 } from './behaviourTree/events';
