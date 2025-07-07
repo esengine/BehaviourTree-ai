@@ -65,10 +65,6 @@ export class ConditionFactory {
         const cleanVariableName = ConditionFactory.cleanVariableName(variableName);
         const cleanCompareVariable = compareVariable ? ConditionFactory.cleanVariableName(compareVariable) : undefined;
 
-        console.log(`[ConditionFactory] 原始变量名: "${variableName}" -> 清理后: "${cleanVariableName}"`);
-        console.log(`[ConditionFactory] 原始比较值: "${compareValue}" (${typeof compareValue})`);
-        console.log(`[ConditionFactory] 原始properties.compareValue:`, JSON.stringify(properties.compareValue, null, 2));
-
         // 处理类型转换 - 特别是布尔值的字符串表示
         let processedCompareValue = compareValue;
         if (typeof compareValue === 'string') {
@@ -82,8 +78,6 @@ export class ConditionFactory {
                 processedCompareValue = Number(compareValue);
             }
         }
-
-        console.log(`[ConditionFactory] 创建黑板比较条件: ${cleanVariableName} ${operator} ${processedCompareValue} (类型: ${typeof processedCompareValue})`);
 
         return new BlackboardValueComparison<T>(
             cleanVariableName,

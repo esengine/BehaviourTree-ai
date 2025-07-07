@@ -59,10 +59,6 @@ export class BehaviorTreeComponent extends Component {
         if (this._behaviorTree && !this._isRunning) {
             this._isRunning = true;
             this._behaviorTree.reset();
-            
-            if (this.debugMode) {
-                console.log(`[${this.treeName}] 行为树启动 - 实体ID: ${this.entity.id}`);
-            }
         }
     }
 
@@ -153,9 +149,7 @@ export class BehaviorTreeComponent extends Component {
             // 更新统计信息
             this.updateStats(tickStartTime);
 
-            if (this.debugMode) {
-                console.log(`[${this.treeName}] 实体 ${this.entity.id}: ${TaskStatus[this._lastStatus]} (${this.stats.lastTickTime.toFixed(2)}ms)`);
-            }
+
         } catch (error) {
             console.error(`行为树执行错误 [${this.treeName}] 实体 ${this.entity.id}:`, error);
             this._lastStatus = TaskStatus.Failure;
