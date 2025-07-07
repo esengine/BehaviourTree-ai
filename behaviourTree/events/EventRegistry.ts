@@ -1,3 +1,5 @@
+import { TaskStatus } from '../TaskStatus';
+
 /**
  * 事件处理器接口
  * @template TContext 执行上下文类型，通常包含 node、component、blackboard 等
@@ -31,13 +33,11 @@ export interface IBehaviorTreeContext {
 }
 
 /**
- * 行为树动作的标准返回类型
- * 
- * - 字符串形式：'success' | 'failure' | 'running'
- * - 布尔形式：true (成功) | false (失败)
- * - Promise：用于异步操作，会被转换为 'running' 状态
+ * 行为树动作结果类型
+ * 支持TaskStatus枚举、字符串字面量、boolean和Promise
  */
 export type ActionResult = 
+    | TaskStatus
     | 'success' 
     | 'failure' 
     | 'running' 
