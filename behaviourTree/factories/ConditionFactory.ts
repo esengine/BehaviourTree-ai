@@ -38,7 +38,10 @@ export class ConditionFactory {
                 return ConditionFactory.createBlackboardComparison<T>(nodeProperties);
                 
             case 'condition-custom':
-                return ConditionFactory.createCustomCondition<T>(condition.properties);
+                return ConditionFactory.createCustomCondition<T>(condition.properties || nodeProperties);
+                
+            case 'event-condition':
+                return ConditionFactory.createEventCondition<T>(condition.properties || nodeProperties, context);
                 
             default:
                 console.warn(`未知的条件类型: ${condition.type}，使用默认成功条件`);
@@ -127,6 +130,78 @@ export class ConditionFactory {
     }
 
     /**
+     * 创建事件条件
+     * @param properties 条件属性
+     * @param context 执行上下文
+     * @returns 事件条件实例
+     */
+    private static createEventCondition<T>(properties: Record<string, any> = {}, context: T): IConditional<T> {
+        const eventName = ConditionFactory.extractNestedValue(properties.eventName);
+        
+        if (!eventName || typeof eventName !== 'string') {
+            console.warn('[event-condition] 缺少有效的 eventName 属性');
+            return new ExecuteActionConditional<T>(() => TaskStatus.Failure);
+        }
+
+        return new ExecuteActionConditional<T>((ctx: T) => {
+            try {
+                // 从上下文中获取事件注册表
+                const eventRegistry = (ctx as any).eventRegistry;
+                if (!eventRegistry) {
+                    console.warn(`[event-condition] 未找到事件注册表，请在执行上下文中提供 eventRegistry`);
+                    return TaskStatus.Failure;
+                }
+
+                // 获取条件处理器
+                const checker = eventRegistry.getConditionHandler ?
+                    eventRegistry.getConditionHandler(eventName) :
+                    eventRegistry.handlers?.get(eventName);
+
+                if (!checker) {
+                    console.warn(`[event-condition] 未找到条件处理器: ${eventName}`);
+                    return TaskStatus.Failure;
+                }
+
+                // 解析参数
+                let parameters = {};
+                const parametersValue = ConditionFactory.extractNestedValue(properties.parameters);
+                if (parametersValue) {
+                    if (typeof parametersValue === 'string') {
+                        try {
+                            parameters = JSON.parse(parametersValue);
+                        } catch (e) {
+                            console.warn(`[event-condition] 参数解析失败: ${parametersValue}`);
+                        }
+                    } else {
+                        parameters = parametersValue;
+                    }
+
+                    // 支持黑板变量替换
+                    const blackboard = (ctx as any).blackboard;
+                    if (blackboard) {
+                        parameters = ConditionFactory.replaceBlackboardVariables(parameters, blackboard);
+                    }
+                }
+
+                // 执行条件检查
+                const result = checker(ctx, parameters);
+
+                // 处理异步结果
+                if (result instanceof Promise) {
+                    console.warn(`[event-condition] 条件 ${eventName} 返回Promise，条件节点不支持异步操作`);
+                    return TaskStatus.Failure;
+                }
+
+                return result ? TaskStatus.Success : TaskStatus.Failure;
+
+            } catch (error) {
+                console.error(`[event-condition] 条件 ${eventName} 检查失败:`, error);
+                return TaskStatus.Failure;
+            }
+        });
+    }
+
+    /**
      * 映射操作符字符串到枚举
      * @param operator 操作符字符串
      * @returns 操作符枚举值
@@ -179,5 +254,32 @@ export class ConditionFactory {
         }
 
         return prop;
+    }
+
+    /**
+     * 替换黑板变量引用
+     * @param obj 要处理的对象
+     * @param blackboard 黑板实例
+     * @returns 处理后的对象
+     */
+    private static replaceBlackboardVariables(obj: any, blackboard: any): any {
+        if (typeof obj === 'string') {
+            // 匹配 {{variableName}} 格式的变量引用
+            return obj.replace(/\{\{([^}]+)\}\}/g, (match, variableName) => {
+                const value = blackboard.get ? blackboard.get(variableName) : blackboard[variableName];
+                return value !== undefined ? value : match;
+            });
+        } else if (Array.isArray(obj)) {
+            return obj.map(item => ConditionFactory.replaceBlackboardVariables(item, blackboard));
+        } else if (obj && typeof obj === 'object') {
+            const result: any = {};
+            for (const key in obj) {
+                if (obj.hasOwnProperty(key)) {
+                    result[key] = ConditionFactory.replaceBlackboardVariables(obj[key], blackboard);
+                }
+            }
+            return result;
+        }
+        return obj;
     }
 } 

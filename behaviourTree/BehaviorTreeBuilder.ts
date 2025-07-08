@@ -1036,12 +1036,20 @@ export class BehaviorTreeBuilder<T> {
 
             case 'conditional-decorator':
                 // 创建条件装饰器 - 使用新的条件工厂
-                const isBlackboardCompare = nodeConfig.condition?.type === 'blackboard-value-comparison' ||
-                    props.conditionType === 'blackboardCompare';
+                let conditionConfig: ConditionConfig | undefined = nodeConfig.condition;
+                
+                // 根据conditionType属性确定条件类型
+                if (props.conditionType === 'blackboardCompare') {
+                    conditionConfig = { type: 'blackboard-value-comparison' };
+                } else if (props.conditionType === 'eventCondition') {
+                    conditionConfig = { type: 'event-condition' };
+                } else if (props.conditionType === 'custom') {
+                    conditionConfig = { type: 'condition-custom' };
+                }
 
                 // 使用条件工厂创建条件
                 const conditionalNode = ConditionFactory.createCondition(
-                    isBlackboardCompare ? { type: 'blackboard-value-comparison' } : nodeConfig.condition,
+                    conditionConfig,
                     props,
                     context
                 );

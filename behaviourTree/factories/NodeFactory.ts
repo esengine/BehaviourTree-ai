@@ -179,13 +179,20 @@ export class NodeFactory {
     ): ConditionalDecorator<T> {
         const props = nodeConfig.properties || {};
         
-        // 检查是否是黑板值比较条件
-        const isBlackboardCompare = nodeConfig.condition?.type === 'blackboard-value-comparison' || 
-                                   props.conditionType === 'blackboardCompare';
+        // 根据conditionType属性确定条件类型
+        let conditionConfig: ConditionConfig | undefined = nodeConfig.condition;
+        
+        if (props.conditionType === 'blackboardCompare') {
+            conditionConfig = { type: 'blackboard-value-comparison' };
+        } else if (props.conditionType === 'eventCondition') {
+            conditionConfig = { type: 'event-condition' };
+        } else if (props.conditionType === 'custom') {
+            conditionConfig = { type: 'condition-custom' };
+        }
 
         // 使用条件工厂创建条件
         const conditionalNode = ConditionFactory.createCondition(
-            isBlackboardCompare ? { type: 'blackboard-value-comparison' } : nodeConfig.condition,
+            conditionConfig,
             props,
             context
         );
