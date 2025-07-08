@@ -42,6 +42,12 @@ export class ConditionalDecorator<T> extends Decorator<T> implements IConditiona
             throw new Error("child不能为空");
         }
 
+        // 如果子节点正在运行且shouldReevaluate为false，直接继续执行子节点
+        if (!this._shouldReevaluate && this.child.status === TaskStatus.Running) {
+            return this.child.tick(context);
+        }
+
+        // 否则正常评估条件
         this._conditionalStatus = this.executeConditional(context);
 
         if (this._conditionalStatus == TaskStatus.Success)
@@ -60,4 +66,6 @@ export class ConditionalDecorator<T> extends Decorator<T> implements IConditiona
 
         return this._conditionalStatus;
     }
+
+
 }
