@@ -1,7 +1,27 @@
 import { Behavior } from '../Behavior';
 import { TaskStatus } from '../TaskStatus';
 import { AbortTypes, AbortTypesExt } from './AbortTypes';
-import { isIConditional } from '../conditionals/IConditional';
+import { isIConditional, IConditional } from '../conditionals/IConditional';
+
+/**
+ * 条件装饰器接口，用于类型安全的条件性中止逻辑
+ */
+interface IConditionalDecorator<T> extends IConditional<T> {
+    abortType: AbortTypes;
+    executeConditional(context: T, forceUpdate?: boolean): TaskStatus;
+}
+
+/**
+ * 检查节点是否为条件装饰器
+ * @param node 要检查的节点
+ * @returns 如果是条件装饰器则返回true
+ */
+function isConditionalDecorator<T>(node: Behavior<T>): node is Behavior<T> & IConditionalDecorator<T> {
+    return isIConditional(node) && 
+           'abortType' in node && 
+           'executeConditional' in node &&
+           typeof (node as IConditionalDecorator<T>).executeConditional === 'function';
+}
 
 /**
  * 复合节点基类
@@ -76,7 +96,7 @@ export abstract class Composite<T> extends Behavior<T> {
             const child = this._children[i];
             
             // 检查条件装饰器的中止类型
-            if (isIConditional(child) && (child as any).abortType && AbortTypesExt.has((child as any).abortType, AbortTypes.LowerPriority)) {
+            if (isConditionalDecorator(child) && AbortTypesExt.has(child.abortType, AbortTypes.LowerPriority)) {
                 return true;
             }
             
@@ -160,12 +180,13 @@ export abstract class Composite<T> extends Behavior<T> {
             const child = this._children[i];
             
             // 检查是否为条件装饰器或设置了LowerPriority中止类型的复合节点
-            if (isIConditional(child) && (child as any).abortType && AbortTypesExt.has((child as any).abortType, AbortTypes.LowerPriority)) {
-                // 直接是条件节点（如条件装饰器）
-                const status = this.updateConditionalNode(context, child);
+            if (isConditionalDecorator(child) && AbortTypesExt.has(child.abortType, AbortTypes.LowerPriority)) {
+                // 对于条件装饰器，检查条件本身而不是装饰器的整体状态
+                const conditionStatus = child.executeConditional(context, true); // 强制更新条件
+                
                 // 对于选择器：当高优先级条件变为Success时，应该中止低优先级任务
                 // 对于序列器：当高优先级条件变为Failure时，应该中止低优先级任务
-                const shouldAbort = (statusCheck === TaskStatus.Failure) ? (status === TaskStatus.Success) : (status === TaskStatus.Failure);
+                const shouldAbort = (statusCheck === TaskStatus.Failure) ? (conditionStatus === TaskStatus.Success) : (conditionStatus === TaskStatus.Failure);
                 
                 if (shouldAbort) {
                     // 条件满足，需要中止当前执行，回到这个节点
