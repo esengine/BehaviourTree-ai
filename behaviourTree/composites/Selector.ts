@@ -25,6 +25,8 @@ export class Selector<T> extends Composite<T> {
     public override onStart(): void {
         super.onStart();
         this._childCount = this._children.length;
+        // 确保每次开始时都从第一个子节点开始
+        this._currentChildIndex = 0;
     }
 
     public update(context: T): TaskStatus {
@@ -61,6 +63,14 @@ export class Selector<T> extends Composite<T> {
         }
 
         return TaskStatus.Running;
+    }
+
+    /**
+     * 重写invalidate方法，确保在节点无效化时重置索引
+     */
+    public override invalidate(): void {
+        super.invalidate();
+        this._currentChildIndex = 0;
     }
 
     /**

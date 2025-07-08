@@ -43,6 +43,9 @@ export class RandomSelector<T> extends Selector<T> {
      * 随机打乱子节点顺序
      */
     public override onStart(): void {
+        // 首先调用父类的onStart方法，重置_currentChildIndex
+        super.onStart();
+        
         // 备份原始顺序（仅在第一次时）
         if (this._originalOrder === null && this._children.length > 0) {
             this._originalOrder = [...this._children];
