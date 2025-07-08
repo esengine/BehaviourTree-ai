@@ -50,9 +50,10 @@ export class ConditionalDecorator<T> extends Decorator<T> implements IConditiona
         // 否则正常评估条件
         this._conditionalStatus = this.executeConditional(context);
 
-        if (this._conditionalStatus == TaskStatus.Success)
-            return this.child.tick(context);
-
+        if (this._conditionalStatus == TaskStatus.Success) {
+            const childStatus = this.child.tick(context);
+            return childStatus;
+        }
         return TaskStatus.Failure;
     }
 
