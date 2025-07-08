@@ -1054,7 +1054,8 @@ export class BehaviorTreeBuilder<T> {
                     context
                 );
 
-                const shouldReevaluate = BehaviorTreeBuilder.extractNestedValue(props.shouldReevaluate) !== false;
+                const shouldReevaluateValue = BehaviorTreeBuilder.extractNestedValue(props.shouldReevaluate);
+                const shouldReevaluate = shouldReevaluateValue !== false && shouldReevaluateValue !== "false";
                 const abortType = BehaviorTreeBuilder.getAbortType(BehaviorTreeBuilder.extractNestedValue(props.abortType) || 'None');
                 node = new ConditionalDecorator<T>(conditionalNode, shouldReevaluate, abortType);
                 break;
