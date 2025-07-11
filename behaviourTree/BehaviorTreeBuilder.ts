@@ -55,18 +55,6 @@ import { CooldownDecorator } from './decorators/CooldownDecorator';
 import { TimeoutDecorator } from './decorators/TimeoutDecorator';
 import { ChanceDecorator } from './decorators/ChanceDecorator';
 
-// ECS集成节点导入
-import {
-    HasComponentCondition,
-    AddComponentAction,
-    RemoveComponentAction,
-    HasTagCondition,
-    ModifyComponentAction,
-    WaitTimeAction,
-    IsActiveCondition,
-    DestroyEntityAction
-} from '../ecs-integration/behaviors/ECSBehaviors';
-
 /**
  * 支持的黑板变量类型联合类型
  */
@@ -1185,29 +1173,7 @@ export class BehaviorTreeBuilder<T> {
                 }
                 break;
 
-            case 'condition-component':
-                const componentTypeName = props.componentType || 'Component';
-                node = new ExecuteActionConditional<T>((ctx: T) => {
-                    console.warn(`condition-component节点需要在ECS环境中使用，组件类型: ${componentTypeName}`);
-                    return TaskStatus.Failure;
-                });
-                break;
 
-            case 'condition-tag':
-                const tagValue = Number(props.tagValue) || 0;
-                node = new ExecuteActionConditional<T>((ctx: T) => {
-                    console.warn(`condition-tag节点需要在ECS环境中使用，标签值: ${tagValue}`);
-                    return TaskStatus.Failure;
-                });
-                break;
-
-            case 'condition-active':
-                const checkHierarchyProp = props.checkHierarchy !== false;
-                node = new ExecuteActionConditional<T>((ctx: T) => {
-                    console.warn(`condition-active节点需要在ECS环境中使用，检查层级: ${checkHierarchyProp}`);
-                    return TaskStatus.Failure;
-                });
-                break;
 
             case 'condition-numeric':
                 node = new ExecuteActionConditional<T>((ctx: T) => {
@@ -1510,119 +1476,7 @@ export class BehaviorTreeBuilder<T> {
                 });
                 break;
 
-            // ========== ECS集成节点 ==========
-            case 'has-component':
-                try {
-                    const componentName = props.componentType || 'Component';
-                    // 这里需要根据组件名称获取实际的组件类型
-                    // 在实际应用中，应该从ECS系统注册的组件类型中获取
-                    node = new ExecuteActionConditional<T>((ctx: T) => {
-                        console.warn(`has-component节点需要在ECS环境中使用，组件类型: ${componentName}`);
-                        return TaskStatus.Failure;
-                    });
-                } catch (error) {
-                    console.warn('ECS集成模块未找到，has-component节点将返回失败');
-                    node = new ExecuteActionConditional<T>(() => TaskStatus.Failure);
-                }
-                break;
 
-            case 'add-component':
-                try {
-                    const componentName = props.componentType || 'Component';
-                    node = new ExecuteAction<T>((ctx: T) => {
-                        console.warn(`add-component节点需要在ECS环境中使用，组件类型: ${componentName}`);
-                        return TaskStatus.Failure;
-                    });
-                } catch (error) {
-                    console.warn('ECS集成模块未找到，add-component节点将返回失败');
-                    node = new ExecuteAction<T>(() => TaskStatus.Failure);
-                }
-                break;
-
-            case 'remove-component':
-                try {
-                    const componentName = props.componentType || 'Component';
-                    node = new ExecuteAction<T>((ctx: T) => {
-                        console.warn(`remove-component节点需要在ECS环境中使用，组件类型: ${componentName}`);
-                        return TaskStatus.Failure;
-                    });
-                } catch (error) {
-                    console.warn('ECS集成模块未找到，remove-component节点将返回失败');
-                    node = new ExecuteAction<T>(() => TaskStatus.Failure);
-                }
-                break;
-
-            case 'has-tag':
-                try {
-                    const tag = Number(props.tag) || 0;
-                    node = new ExecuteActionConditional<T>((ctx: T) => {
-                        console.warn(`has-tag节点需要在ECS环境中使用，标签: ${tag}`);
-                        return TaskStatus.Failure;
-                    });
-                } catch (error) {
-                    console.warn('ECS集成模块未找到，has-tag节点将返回失败');
-                    node = new ExecuteActionConditional<T>(() => TaskStatus.Failure);
-                }
-                break;
-
-            case 'modify-component':
-                try {
-                    const componentName = props.componentType || 'Component';
-                    node = new ExecuteAction<T>((ctx: T) => {
-                        console.warn(`modify-component节点需要在ECS环境中使用，组件类型: ${componentName}`);
-                        return TaskStatus.Failure;
-                    });
-                } catch (error) {
-                    console.warn('ECS集成模块未找到，modify-component节点将返回失败');
-                    node = new ExecuteAction<T>(() => TaskStatus.Failure);
-                }
-                break;
-
-            case 'wait-time':
-                // 使用基础的等待实现，避免ECS依赖
-                const waitTimeValue = Number(props.waitTime) || 1.0;
-                let waitStartTime = 0;
-                let waitIsStarted = false;
-
-                node = new ExecuteAction<T>((ctx: T) => {
-                    if (!waitIsStarted) {
-                        waitStartTime = performance.now();
-                        waitIsStarted = true;
-                    }
-
-                    const elapsed = (performance.now() - waitStartTime) / 1000;
-                    if (elapsed >= waitTimeValue) {
-                        waitIsStarted = false;
-                        return TaskStatus.Success;
-                    }
-                    return TaskStatus.Running;
-                });
-                break;
-
-            case 'is-active':
-                try {
-                    const checkHierarchy = props.checkHierarchy !== false;
-                    node = new ExecuteActionConditional<T>((ctx: T) => {
-                        console.warn(`is-active节点需要在ECS环境中使用，检查层级: ${checkHierarchy}`);
-                        return TaskStatus.Failure;
-                    });
-                } catch (error) {
-                    console.warn('ECS集成模块未找到，is-active节点将返回失败');
-                    node = new ExecuteActionConditional<T>(() => TaskStatus.Failure);
-                }
-                break;
-
-            case 'destroy-entity':
-                try {
-                    node = new ExecuteAction<T>((ctx: T) => {
-                        console.warn('destroy-entity节点需要在ECS环境中使用');
-                        return TaskStatus.Failure;
-                    });
-                } catch (error) {
-                    console.warn('ECS集成模块未找到，destroy-entity节点将返回失败');
-                    node = new ExecuteAction<T>(() => TaskStatus.Failure);
-                }
-                break;
 
             // ========== 高级装饰器节点 ==========
             case 'cooldown':

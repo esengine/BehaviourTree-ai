@@ -60,8 +60,5 @@
   "bugs": {
     "url": "https://github.com/esengine/BehaviourTree-ai/issues"
   },
-  "homepage": "https://github.com/esengine/BehaviourTree-ai#readme",
-  "dependencies": {
-    "@esengine/ecs-framework": "^2.1.20"
-  }
+  "homepage": "https://github.com/esengine/BehaviourTree-ai#readme"
 }
