@@ -136,13 +136,5 @@ dist
 *.swp
 *.swo
 
-# Test files
-test/
-tests/
-*.test.js
-*.test.ts
-*.spec.js
-*.spec.ts
-
 # Source directory (已移动到根目录)
 source/
