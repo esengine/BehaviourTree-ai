@@ -38,12 +38,7 @@ module.exports = [
       exports: 'named'
     },
     plugins: [
-      ...commonPlugins,
-      terser({
-        format: {
-          comments: /^!/
-        }
-      })
+      ...commonPlugins
     ],
     external,
     treeshake: {
@@ -64,12 +59,7 @@ module.exports = [
       exports: 'named'
     },
     plugins: [
-      ...commonPlugins,
-      terser({
-        format: {
-          comments: /^!/
-        }
-      })
+      ...commonPlugins
     ],
     external,
     treeshake: {
