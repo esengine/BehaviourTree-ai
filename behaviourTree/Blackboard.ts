@@ -231,6 +231,28 @@ export class Blackboard {
     }
 
     /**
+     * 设置变量值 (setValue的别名方法)
+     * 
+     * @param name 变量名
+     * @param value 新值
+     * @param force 是否强制设置（忽略只读限制）
+     */
+    public set<T = any>(name: string, value: T, force: boolean = false): boolean {
+        return this.setValue(name, value, force);
+    }
+
+    /**
+     * 获取变量值 (getValue的别名方法)
+     * 
+     * @param name 变量名
+     * @param defaultValue 变量不存在时的默认返回值
+     * @returns 变量值
+     */
+    public get<T = any>(name: string, defaultValue?: T): T {
+        return this.getValue(name, defaultValue);
+    }
+
+    /**
      * 检查变量是否存在
      */
     public hasVariable(name: string): boolean {

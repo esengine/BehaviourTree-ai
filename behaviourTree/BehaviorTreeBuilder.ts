@@ -331,6 +331,15 @@ export class BehaviorTreeBuilder<T> {
     }
 
     /**
+     * 添加动作节点 (action的别名方法)
+     * @param func 动作执行函数
+     * @returns 构建器实例
+     */
+    public executeAction(func: (t: T) => TaskStatus): BehaviorTreeBuilder<T> {
+        return this.action(func);
+    }
+
+    /**
      * 添加条件节点
      * @param func 条件检查函数
      * @returns 构建器实例
@@ -388,13 +397,37 @@ export class BehaviorTreeBuilder<T> {
     }
 
     /**
+     * 添加设置黑板值的动作节点
+     * @param variableName 变量名
+     * @param value 要设置的值
+     * @param sourceVariable 源变量名(可选)
+     * @param force 是否强制设置
+     * @returns 构建器实例
+     */
+    public setBlackboardValue(variableName: string, value: any, sourceVariable?: string, force: boolean = false): BehaviorTreeBuilder<T> {
+        if (this._parentNodeStack.length === 0) {
+            throw new Error("无法创建无嵌套的动作节点，它必须是一个叶节点");
+        }
+        return this.setChildOnParent(new SetBlackboardValue<T>(variableName, value, sourceVariable, force));
+    }
+
+    /**
      * 添加条件装饰器
      * @param func 条件函数
      * @param shouldReevaluate 是否重新评估
      * @returns 构建器实例
      */
-    public conditionalDecorator(func: (t: T) => TaskStatus, shouldReevaluate: boolean = true): BehaviorTreeBuilder<T> {
-        const conditional = new ExecuteActionConditional<T>(func);
+    public conditionalDecorator(func: (t: T) => TaskStatus, shouldReevaluate?: boolean): BehaviorTreeBuilder<T>;
+    public conditionalDecorator(func: (t: T) => boolean, shouldReevaluate?: boolean): BehaviorTreeBuilder<T>;
+    public conditionalDecorator(func: (t: T) => TaskStatus | boolean, shouldReevaluate: boolean = true): BehaviorTreeBuilder<T> {
+        const wrappedFunc = (t: T): TaskStatus => {
+            const result = func(t);
+            if (typeof result === 'boolean') {
+                return result ? TaskStatus.Success : TaskStatus.Failure;
+            }
+            return result;
+        };
+        const conditional = new ExecuteActionConditional<T>(wrappedFunc);
         return this.pushParentNode(new ConditionalDecorator<T>(conditional, shouldReevaluate));
     }
 
@@ -463,6 +496,14 @@ export class BehaviorTreeBuilder<T> {
      */
     public paraller(): BehaviorTreeBuilder<T> {
         return this.pushParentNode(new Parallel<T>());
+    }
+
+    /**
+     * 添加并行节点 (paraller的正确拼写别名)
+     * @returns 构建器实例
+     */
+    public parallel(): BehaviorTreeBuilder<T> {
+        return this.paraller();
     }
 
     /**

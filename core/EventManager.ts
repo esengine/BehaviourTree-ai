@@ -88,7 +88,7 @@ export class EventManager {
     private readonly _listeners: Map<string, EventListener[]> = new Map();
     private readonly _config: EventManagerConfig;
     private _stats: EventStats;
-    private _cleanupTimer: number | null = null;
+    private _cleanupTimer: any = null;
     private _nextListenerId: number = 1;
 
     /**
@@ -152,7 +152,7 @@ export class EventManager {
         // 检查监听器数量限制
         if (this._stats.totalListeners >= this._config.maxListeners) {
             console.warn(`事件监听器数量已达到上限 ${this._config.maxListeners}`);
-            this._performCleanup(); // 尝试清理
+            this.cleanup(); // 尝试清理
             
             if (this._stats.totalListeners >= this._config.maxListeners) {
                 throw new Error('无法添加更多事件监听器，已达到上限');
@@ -408,7 +408,9 @@ export class EventManager {
             return;
         }
 
-        this._cleanupTimer = window.setInterval(() => {
+        // 兼容Node.js环境
+        const setInterval = typeof window !== 'undefined' ? window.setInterval : global.setInterval;
+        this._cleanupTimer = setInterval(() => {
             this._performCleanup();
         }, this._config.cleanupInterval);
     }
@@ -418,6 +420,8 @@ export class EventManager {
      */
     private _stopAutoCleanup(): void {
         if (this._cleanupTimer) {
+            // 兼容Node.js环境
+            const clearInterval = typeof window !== 'undefined' ? window.clearInterval : global.clearInterval;
             clearInterval(this._cleanupTimer);
             this._cleanupTimer = null;
         }

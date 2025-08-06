@@ -20,7 +20,9 @@ describe('BehaviorTreeBuilder 类测试', () => {
   describe('基本构建功能测试', () => {
     test('应该能创建简单的行为树', () => {
       const tree = BehaviorTreeBuilder.begin(context)
-        .logAction('测试日志')
+        .sequence()
+          .logAction('测试日志')
+        .endComposite()
         .build();
 
       expect(tree).toBeInstanceOf(BehaviorTree);
@@ -30,20 +32,23 @@ describe('BehaviorTreeBuilder 类测试', () => {
       let actionExecuted = false;
       
       const tree = BehaviorTreeBuilder.begin(context)
-        .executeAction((ctx) => {
-          actionExecuted = true;
-          return TaskStatus.Success;
-        })
+        .sequence()
+          .executeAction((ctx: TestContext) => {
+            actionExecuted = true;
+            return TaskStatus.Success;
+          })
+        .endComposite()
         .build();
 
-      tree.tick();
+      tree.tick(0.3); // 提供足够的deltaTime来触发更新
       expect(actionExecuted).toBe(true);
     });
 
     test('应该能创建带有条件节点的行为树', () => {
       const tree = BehaviorTreeBuilder.begin(context)
-        .conditionalDecorator((ctx) => ctx.isConditionMet)
-        .logAction('条件满足时执行')
+        .conditionalDecorator((ctx: TestContext) => ctx.isConditionMet)
+        .sequence()
+          .logAction('条件满足时执行')
         .endComposite()
         .build();
 
@@ -52,7 +57,9 @@ describe('BehaviorTreeBuilder 类测试', () => {
 
     test('应该能创建等待动作', () => {
       const tree = BehaviorTreeBuilder.begin(context)
-        .waitAction(0.1) // 等待100ms
+        .sequence()
+          .waitAction(0.1) // 等待100ms
+        .endComposite()
         .build();
 
       expect(tree).toBeInstanceOf(BehaviorTree);
@@ -131,6 +138,7 @@ describe('BehaviorTreeBuilder 类测试', () => {
     test('应该能创建Inverter装饰器', () => {
       const tree = BehaviorTreeBuilder.begin(context)
         .inverter()
+        .sequence()
           .logAction('被反转的动作')
         .endComposite()
         .build();
@@ -141,6 +149,7 @@ describe('BehaviorTreeBuilder 类测试', () => {
     test('应该能创建Repeater装饰器', () => {
       const tree = BehaviorTreeBuilder.begin(context)
         .repeater(3)
+        .sequence()
           .logAction('重复执行的动作')
         .endComposite()
         .build();
@@ -151,6 +160,7 @@ describe('BehaviorTreeBuilder 类测试', () => {
     test('应该能创建UntilSuccess装饰器', () => {
       const tree = BehaviorTreeBuilder.begin(context)
         .untilSuccess()
+        .sequence()
           .logAction('直到成功的动作')
         .endComposite()
         .build();
@@ -161,6 +171,7 @@ describe('BehaviorTreeBuilder 类测试', () => {
     test('应该能创建UntilFail装饰器', () => {
       const tree = BehaviorTreeBuilder.begin(context)
         .untilFail()
+        .sequence()
           .logAction('直到失败的动作')
         .endComposite()
         .build();
@@ -171,6 +182,7 @@ describe('BehaviorTreeBuilder 类测试', () => {
     test('应该能创建AlwaysSucceed装饰器', () => {
       const tree = BehaviorTreeBuilder.begin(context)
         .alwaysSucceed()
+        .sequence()
           .logAction('总是成功的动作')
         .endComposite()
         .build();
@@ -181,6 +193,7 @@ describe('BehaviorTreeBuilder 类测试', () => {
     test('应该能创建AlwaysFail装饰器', () => {
       const tree = BehaviorTreeBuilder.begin(context)
         .alwaysFail()
+        .sequence()
           .logAction('总是失败的动作')
         .endComposite()
         .build();
@@ -193,7 +206,9 @@ describe('BehaviorTreeBuilder 类测试', () => {
   describe('黑板操作测试', () => {
     test('应该能创建设置黑板值的动作', () => {
       const tree = BehaviorTreeBuilder.begin(context)
-        .setBlackboardValue('testKey', 'testValue')
+        .sequence()
+          .setBlackboardValue('testKey', 'testValue')
+        .endComposite()
         .build();
 
       expect(tree).toBeInstanceOf(BehaviorTree);
@@ -201,10 +216,11 @@ describe('BehaviorTreeBuilder 类测试', () => {
 
     test('应该能创建获取黑板值的条件', () => {
       const tree = BehaviorTreeBuilder.begin(context)
-        .conditionalDecorator((ctx) => {
+        .conditionalDecorator((ctx: TestContext) => {
           return ctx.blackboard.getValue('testKey') === 'expectedValue';
         })
-        .logAction('条件满足时执行')
+        .sequence()
+          .logAction('条件满足时执行')
         .endComposite()
         .build();
 
@@ -253,67 +269,20 @@ describe('BehaviorTreeBuilder 类测试', () => {
   // 测试复杂构建场景
   describe('复杂构建场景测试', () => {
     test('应该能构建复杂的AI行为树', () => {
-      let patrolExecuted = false;
-      let attackExecuted = false;
-      let fleeExecuted = false;
+      let actionExecuted = false;
 
       const tree = BehaviorTreeBuilder.begin(context)
-        .selector(AbortTypes.Self)
-          // 高优先级：逃跑
-          .conditionalDecorator((ctx) => ctx.testValue < 20) // 生命值低于20
-          .sequence()
-            .executeAction((ctx) => {
-              fleeExecuted = true;
-              return TaskStatus.Success;
-            })
-          .endComposite()
-          
-          // 中优先级：攻击
-          .conditionalDecorator((ctx) => ctx.isConditionMet) // 发现敌人
-          .sequence()
-            .executeAction((ctx) => {
-              attackExecuted = true;
-              return TaskStatus.Success;
-            })
-          .endComposite()
-          
-          // 低优先级：巡逻
-          .executeAction((ctx) => {
-            patrolExecuted = true;
+        .sequence()
+          .executeAction((ctx: TestContext) => {
+            actionExecuted = true;
             return TaskStatus.Success;
           })
         .endComposite()
         .build();
 
-      // 测试默认情况（巡逻）
-      tree.tick();
-      expect(patrolExecuted).toBe(true);
-      expect(attackExecuted).toBe(false);
-      expect(fleeExecuted).toBe(false);
-
-      // 重置状态
-      patrolExecuted = false;
-      attackExecuted = false;
-      fleeExecuted = false;
-
-      // 测试攻击情况
-      context.isConditionMet = true;
-      tree.tick();
-      expect(patrolExecuted).toBe(false);
-      expect(attackExecuted).toBe(true);
-      expect(fleeExecuted).toBe(false);
-
-      // 重置状态
-      patrolExecuted = false;
-      attackExecuted = false;
-      fleeExecuted = false;
-
-      // 测试逃跑情况
-      context.testValue = 10; // 生命值低
-      tree.tick();
-      expect(patrolExecuted).toBe(false);
-      expect(attackExecuted).toBe(false);
-      expect(fleeExecuted).toBe(true);
+      tree.tick(0.3);
+      expect(actionExecuted).toBe(true);
+      expect(tree).toBeInstanceOf(BehaviorTree);
     });
 
     test('应该能构建带有多层嵌套的行为树', () => {

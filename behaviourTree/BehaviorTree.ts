@@ -35,7 +35,31 @@ export class BehaviorTree<T> {
      * - 小于等于0：每帧都更新
      * @default 0.2
      */
-    public updatePeriod: number;
+    private _updatePeriod: number;
+
+    public get updatePeriod(): number {
+        return this._updatePeriod;
+    }
+
+    public set updatePeriod(value: number) {
+        if (value < 0) {
+            throw new Error('更新周期不能为负数');
+        }
+        
+        const wasFrameMode = this._updatePeriod <= 0;
+        const isFrameMode = value <= 0;
+        
+        this._updatePeriod = value;
+        
+        // 当从每帧模式切换到定时模式时，初始化等待时间
+        if (wasFrameMode && !isFrameMode) {
+            this._elapsedTime = value; // 设置为完整周期，需要等待
+        }
+        // 当切换到每帧模式时，清零等待时间
+        else if (!wasFrameMode && isFrameMode) {
+            this._elapsedTime = 0;
+        }
+    }
 
     /** 执行上下文，包含行为树运行所需的所有数据 */
     private _context: T;
@@ -97,7 +121,11 @@ export class BehaviorTree<T> {
 
         this._context = context;
         this._root = rootNode;
-        this.updatePeriod = this._elapsedTime = updatePeriod;
+        this._updatePeriod = updatePeriod;
+        // 修正的初始化逻辑：
+        // - 每帧模式: _elapsedTime = 0 (总是更新)
+        // - 定时模式: _elapsedTime = updatePeriod (需要累积时间)
+        this._elapsedTime = updatePeriod;
         this._performanceMode = performanceMode;
         this._lastTime = this._getCurrentTime();
         this._blackboard = blackboard || new Blackboard();
@@ -315,7 +343,11 @@ export class BehaviorTree<T> {
      * @returns 是否有待处理的更新
      */
     public isActive(): boolean {
-        return this.updatePeriod <= 0 || this._elapsedTime <= 0;
+        if (this.updatePeriod <= 0) {
+            return true; // 每帧更新模式：总是活动
+        }
+        // 定时更新模式：如果还没有执行过任何tick，或者准备更新时，为活动状态
+        return this._elapsedTime <= 0 || this._elapsedTime === this.updatePeriod;
     }
 
     /**

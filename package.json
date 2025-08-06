@@ -38,7 +38,10 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage",
-    "test:clear": "jest --clearCache"
+    "test:clear": "jest --clearCache",
+    "test:performance": "jest --config jest.performance.config.js",
+    "test:perf:watch": "jest --config jest.performance.config.js --watch",
+    "test:all": "npm run test && npm run test:performance"
   },
   "author": "yhh",
   "license": "MIT",

@@ -60,29 +60,16 @@ export class ObjectPool<T> {
     /**
      * 将对象归还到池中
      * @param obj 要归还的对象
-     * @throws {Error} 当obj为null或undefined时抛出错误
      */
     public release(obj: T): void {
         if (obj == null) {
-            throw new Error('不能归还null或undefined对象到池中');
-        }
-        
-        // 检查是否已经在池中（避免重复归还）
-        if (this._pool.includes(obj)) {
-            console.warn('对象已经在池中，忽略重复归还');
-            return;
+            return; // 静默处理null/undefined，避免异常开销
         }
         
         if (this._pool.length < this._maxSize) {
             // 重置对象状态
             if (this._resetFn) {
-                try {
-                    this._resetFn(obj);
-                } catch (error) {
-                    console.error('重置对象时发生错误:', error);
-                    // 即使重置失败，也不将对象放回池中
-                    return;
-                }
+                this._resetFn(obj);
             }
             
             this._pool.push(obj);

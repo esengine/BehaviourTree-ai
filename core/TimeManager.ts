@@ -121,16 +121,17 @@ export class TimeManager {
             // 使用外部提供的时间差
             this._unscaledDeltaTime = Math.max(0, externalDeltaTime);
         } else {
-            // 计算时间差
+            // 计算系统时间差
             const systemTime = this._getSystemTime();
             const currentSystemTime = (systemTime - this._startTime) / 1000;
             
             if (this._frameCount === 1) {
                 // 第一帧，设置初始时间
                 this._lastTime = currentSystemTime;
-                this._unscaledDeltaTime = 0;
+                this._unscaledDeltaTime = 0; // 第一帧时间差为0
             } else {
                 this._unscaledDeltaTime = currentSystemTime - this._lastTime;
+                this._lastTime = currentSystemTime; // 更新lastTime为当前系统时间
             }
         }
 
@@ -141,7 +142,6 @@ export class TimeManager {
         this._deltaTime = this._unscaledDeltaTime * this._timeScale;
         
         // 更新当前时间
-        this._lastTime = this._currentTime;
         this._currentTime += this._deltaTime;
 
         // 触发时间更新回调
@@ -228,7 +228,7 @@ export class TimeManager {
      * 获取当前帧率
      */
     public static getCurrentFPS(): number {
-        if (this._deltaTime <= 0) {
+        if (this._unscaledDeltaTime <= 0) {
             return 0;
         }
         return 1 / this._unscaledDeltaTime;
@@ -272,6 +272,8 @@ export class TimeManager {
         this._lastTime = 0;
         this._deltaTime = 0;
         this._unscaledDeltaTime = 0;
+        this._timeScale = 1.0; // 重置时间缩放
+        this._maxDeltaTime = 0.1; // 重置最大时间差
         this.clearUpdateCallbacks();
     }
 

@@ -7,7 +7,6 @@ export * from './BehaviorTree';
 export * from './BehaviorTreeBuilder';
 export * from './TaskStatus';
 export * from './ObjectPool';
-export * from './AdvancedObjectPool';
 export * from './Blackboard';
 
 // 导出接口类型
