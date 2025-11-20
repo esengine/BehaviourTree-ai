@@ -78,6 +78,9 @@ export class BehaviorTree<T> {
     
     /** 是否启用性能优化模式 */
     private _performanceMode: boolean = false;
+
+    /** 是否暂停 */
+    private _paused: boolean = false;
     
     /** 性能统计信息 */
     private _stats: {
@@ -166,6 +169,11 @@ export class BehaviorTree<T> {
      */
     public tick(deltaTime?: number): void {
         const startTime = this._performanceMode ? 0 : this._getCurrentTime();
+
+        // 如果暂停则不执行
+        if (this._paused) {
+            return;
+        }
 
         try {
             if (this.updatePeriod > 0) {
@@ -356,6 +364,37 @@ export class BehaviorTree<T> {
      */
     public getTimeToNextUpdate(): number {
         return this.updatePeriod > 0 ? Math.max(this._elapsedTime, 0) : 0;
+    }
+
+    /**
+     * 暂停行为树
+     */
+    public pause(): void {
+        this._paused = true;
+    }
+
+    /**
+     * 恢复行为树
+     */
+    public resume(): void {
+        this._paused = false;
+    }
+
+    /**
+     * 检查是否暂停
+     */
+    public isPaused(): boolean {
+        return this._paused;
+    }
+
+    /**
+     * 停止行为树并重置状态
+     *
+     * @description 暂停行为树并重置所有节点，下次resume后从头开始执行
+     */
+    public stop(): void {
+        this._paused = true;
+        this.reset();
     }
 
     /**
