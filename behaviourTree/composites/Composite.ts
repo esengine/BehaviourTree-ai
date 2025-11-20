@@ -47,7 +47,7 @@ export abstract class Composite<T> extends Behavior<T> {
 
     /**
      * 使节点及其所有子节点无效
-     * 
+     *
      * 重写父类方法，递归使所有子节点无效
      */
     public override invalidate(): void {
@@ -57,6 +57,20 @@ export abstract class Composite<T> extends Behavior<T> {
         for (let i = 0; i < childrenLength; i++) {
             this._children[i]!.invalidate();
         }
+    }
+
+    /**
+     * 释放节点及其所有子节点的资源
+     *
+     * 重写父类方法，递归释放所有子节点
+     */
+    public override dispose(): void {
+        const childrenLength = this._children.length;
+        for (let i = 0; i < childrenLength; i++) {
+            this._children[i]!.dispose();
+        }
+        this._children.length = 0;
+        super.dispose();
     }
 
     /**

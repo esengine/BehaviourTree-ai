@@ -51,11 +51,22 @@ export abstract class Behavior<T> {
 
     /**
      * 节点执行结束时的回调
-     * 
+     *
      * @description 当节点状态变为Success或Failure时调用
      * 用于清理资源、记录结果等收尾工作
      */
     public onEnd(): void {}
+
+    /**
+     * 释放节点资源
+     *
+     * @description 用于清理节点持有的资源，防止内存泄漏
+     * 复合节点和装饰器节点应重写此方法来递归释放子节点
+     * 调用后节点不应再被使用
+     */
+    public dispose(): void {
+        this.status = TaskStatus.Invalid;
+    }
 
     /**
      * 节点执行的主要入口点

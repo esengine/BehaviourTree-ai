@@ -357,4 +357,26 @@ export class BehaviorTree<T> {
     public getTimeToNextUpdate(): number {
         return this.updatePeriod > 0 ? Math.max(this._elapsedTime, 0) : 0;
     }
+
+    /**
+     * 释放行为树资源
+     *
+     * @description 递归释放根节点及其所有子节点，清理黑板数据
+     * 调用后行为树不应再被使用
+     */
+    public dispose(): void {
+        if (this._root) {
+            this._root.dispose();
+            this._root = null!;
+        }
+        if (this._blackboard) {
+            // 清空所有变量
+            const variableNames = this._blackboard.getVariableNames();
+            for (const name of variableNames) {
+                this._blackboard.removeVariable(name);
+            }
+            this._blackboard = null!;
+        }
+        this._context = null!;
+    }
 }
