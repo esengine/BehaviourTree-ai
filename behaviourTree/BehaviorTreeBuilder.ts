@@ -415,11 +415,12 @@ export class BehaviorTreeBuilder<T> {
      * 添加条件装饰器
      * @param func 条件函数
      * @param shouldReevaluate 是否重新评估
+     * @param abortType 中止类型，用于控制条件变化时的中止行为
      * @returns 构建器实例
      */
-    public conditionalDecorator(func: (t: T) => TaskStatus, shouldReevaluate?: boolean): BehaviorTreeBuilder<T>;
-    public conditionalDecorator(func: (t: T) => boolean, shouldReevaluate?: boolean): BehaviorTreeBuilder<T>;
-    public conditionalDecorator(func: (t: T) => TaskStatus | boolean, shouldReevaluate: boolean = true): BehaviorTreeBuilder<T> {
+    public conditionalDecorator(func: (t: T) => TaskStatus, shouldReevaluate?: boolean, abortType?: AbortTypes): BehaviorTreeBuilder<T>;
+    public conditionalDecorator(func: (t: T) => boolean, shouldReevaluate?: boolean, abortType?: AbortTypes): BehaviorTreeBuilder<T>;
+    public conditionalDecorator(func: (t: T) => TaskStatus | boolean, shouldReevaluate: boolean = true, abortType: AbortTypes = AbortTypes.None): BehaviorTreeBuilder<T> {
         const wrappedFunc = (t: T): TaskStatus => {
             const result = func(t);
             if (typeof result === 'boolean') {
@@ -428,7 +429,7 @@ export class BehaviorTreeBuilder<T> {
             return result;
         };
         const conditional = new ExecuteActionConditional<T>(wrappedFunc);
-        return this.pushParentNode(new ConditionalDecorator<T>(conditional, shouldReevaluate));
+        return this.pushParentNode(new ConditionalDecorator<T>(conditional, shouldReevaluate, abortType));
     }
 
     /**
