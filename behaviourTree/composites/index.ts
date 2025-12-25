@@ -1,3 +1,4 @@
+export * from './AbortTypes';
 export * from './Composite';
 export * from './Parallel';
 export * from './ParallelSelector';

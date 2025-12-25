@@ -14,17 +14,18 @@ export * as FSM from './fsm/index';
 export * as UtilityAI from './utilityAI/index';
 
 // 默认导出（向后兼容）
-export { 
-    BehaviorTree, 
-    BehaviorTreeBuilder, 
-    TaskStatus, 
-    Blackboard, 
+export {
+    BehaviorTree,
+    BehaviorTreeBuilder,
+    TaskStatus,
+    Blackboard,
     BlackboardValueType,
     BehaviorTreeJSONConfig,
     BehaviorTreeNodeConfig,
     BlackboardVariableConfig,
     ExecutionContext,
-    BehaviorTreeBuildResult
+    BehaviorTreeBuildResult,
+    AbortTypes
 } from './behaviourTree/index';
 
 // 事件系统导出
